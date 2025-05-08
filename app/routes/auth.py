@@ -24,11 +24,19 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
-        if user and user.check_password(password):  # Gunakan metode check_password
+
+        if user and user.check_password(password):  # Validasi password
             login_user(user)
-            return redirect(url_for('main.dashboard'))
+            flash('Login berhasil!', 'success')
+
+            # Periksa apakah pengguna adalah admin
+            if user.is_admin:
+                return redirect(url_for('admin_bp.dashboard_admin'))  # Arahkan ke dashboard admin
+            else:
+                return redirect(url_for('main.dashboard'))  # Arahkan ke dashboard user biasa
         else:
-            flash('Login Unsuccessful. Please check username and password', 'danger')
+            flash('Login gagal. Periksa username dan password Anda.', 'danger')
+
     return render_template('login.html')
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
@@ -62,34 +70,3 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for('auth_bp.login'))
-
-auth_bp.route('/register_admin', methods=['GET', 'POST'])
-@login_required
-def register_admin():
-    if not current_user.is_admin:  # Pastikan hanya admin yang bisa mengakses
-        flash('Anda tidak memiliki izin untuk mengakses halaman ini.', 'danger')
-        return redirect(url_for('main.index'))
-
-    if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
-
-        # Validasi apakah username atau email sudah digunakan
-        if User.query.filter_by(username=username).first():
-            flash('Username sudah digunakan.', 'danger')
-            return redirect(url_for('auth_bp.register_admin'))
-        elif User.query.filter_by(email=email).first():
-            flash('Email sudah digunakan.', 'danger')
-            return redirect(url_for('auth_bp.register_admin'))
-
-        # Buat admin baru
-        new_admin = User(username=username, email=email, is_admin=True)
-        new_admin.set_password(password)
-        db.session.add(new_admin)
-        db.session.commit()
-
-        flash('Admin berhasil didaftarkan!', 'success')
-        return redirect(url_for('auth_bp.login'))
-
-    return render_template('register_admin.html')

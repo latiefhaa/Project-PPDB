@@ -28,7 +28,7 @@
     <div class="flex-grow flex items-center justify-center">
         <div class="max-w-4xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
             <h2 class="text-2xl font-bold text-blue-300 mb-4">Formulir Pendaftaran</h2>
-            <form method="POST" action="/submit_form" class="space-y-4">
+            <form method="POST" action="{{ url_for('main.submit_form') }}" enctype="multipart/form-data" class="space-y-4">
                 <div>
                     <label for="full_name" class="block text-sm font-medium text-gray-300 mb-2">Nama Lengkap</label>
                     <input type="text" id="full_name" name="full_name" required
@@ -55,9 +55,9 @@
                         class="w-full px-4 py-2 rounded-lg bg-gray-700 text-gray-200 border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div>
-                    <label for="achievements" class="block text-sm font-medium text-gray-300 mb-2">Prestasi</label>
-                    <textarea id="achievements" name="achievements" rows="3"
-                        class="w-full px-4 py-2 rounded-lg bg-gray-700 text-gray-200 border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    <label for="achievement_file" class="block text-sm font-medium text-gray-300 mb-2">Unggah Prestasi (Foto/Sertifikat)</label>
+                    <input type="file" id="achievement_file" name="achievement_file" accept="image/*"
+                        class="w-full px-4 py-2 rounded-lg bg-gray-700 text-gray-200 border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <button type="submit"
                     class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg shadow-lg font-medium">
