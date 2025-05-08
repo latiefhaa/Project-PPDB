@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PPDB Online{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50">
+    <!-- Navbar -->
+    <nav class="bg-blue-600 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between">
+                <div class="flex space-x-7">
+                    <div>
+                        <a href="/" class="flex items-center py-4">
+                            <span class="font-semibold text-white text-lg">PPDB Online</span>
+                        </a>
+                    </div>
+                    <!-- Primary Nav -->
+                    <div class="hidden md:flex items-center space-x-1">
+                        <a href="/" class="py-4 px-2 text-white hover:text-gray-200">Beranda</a>
+                        <a href="/daftar" class="py-4 px-2 text-white hover:text-gray-200">Pendaftaran</a>
+                        <a href="/pengumuman" class="py-4 px-2 text-white hover:text-gray-200">Pengumuman</a>
+                        <a href="/bantuan" class="py-4 px-2 text-white hover:text-gray-200">Bantuan</a>
+                    </div>
+                </div>
+                <!-- Secondary Nav -->
+                <div class="hidden md:flex items-center space-x-3">
+                    <a href="/login" class="py-2 px-4 text-white bg-blue-700 hover:bg-blue-800 rounded-lg">Login</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white">
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Kontak Kami</h3>
+                    <p>Email: info@sekolah.sch.id</p>
+                    <p>Telp: (021) 1234567</p>
+                    <p>Alamat: Jl. Pendidikan No. 123</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Link Penting</h3>
+                    <ul>
+                        <li><a href="/alur-pendaftaran" class="hover:text-gray-300">Alur Pendaftaran</a></li>
+                        <li><a href="/persyaratan" class="hover:text-gray-300">Persyaratan</a></li>
+                        <li><a href="/jadwal" class="hover:text-gray-300">Jadwal PPDB</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Media Sosial</h3>
+                    <div class="flex space-x-4">
+                        <a href="#" class="hover:text-gray-300">Facebook</a>
+                        <a href="#" class="hover:text-gray-300">Instagram</a>
+                        <a href="#" class="hover:text-gray-300">Twitter</a>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center pt-8 mt-8 border-t border-gray-700">
+                <p>&copy; {% now 'Y' %} PPDB Online. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
