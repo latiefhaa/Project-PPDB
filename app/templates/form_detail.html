@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detail Formulir - PPDB Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
+    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6 mt-12">
+        <h2 class="text-2xl font-bold text-blue-600 mb-4">Detail Formulir</h2>
+        <p><strong>Nama Lengkap:</strong> {{ form.full_name }}</p>
+        <p><strong>Tanggal Lahir:</strong> {{ form.birth_date }}</p>
+        <p><strong>Nama Orang Tua:</strong> {{ form.parent_name }}</p>
+        <p><strong>Alamat:</strong> {{ form.address }}</p>
+        <p><strong>Sekolah Sebelumnya:</strong> {{ form.previous_school }}</p>
+        <p><strong>Prestasi:</strong> {{ form.achievements }}</p>
+        <p><strong>File Prestasi:</strong> 
+            {% if form.achievement_file %}
+                <a href="{{ url_for('static', filename='uploads/' + form.achievement_file) }}" class="text-blue-500 hover:underline">
+                    Lihat File
+                </a>
+            {% else %}
+                Tidak ada file
+            {% endif %}
+        </p>
+        <div class="mt-6">
+            <a href="{{ url_for('admin_bp.dashboard_admin') }}" 
+               class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">
+                Kembali
+            </a>
+        </div>
+    </div>
+</body>
+</html>

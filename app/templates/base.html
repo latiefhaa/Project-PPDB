@@ -7,9 +7,9 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-gray-50">
+<body class="bg-white text-gray-800">
     <!-- Navbar -->
-    <nav class="bg-blue-600 shadow-lg">
+    <nav class="bg-blue-400 shadow-lg">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between">
                 <div class="flex space-x-7">
@@ -20,15 +20,15 @@
                     </div>
                     <!-- Primary Nav -->
                     <div class="hidden md:flex items-center space-x-1">
-                        <a href="/" class="py-4 px-2 text-white hover:text-gray-200">Beranda</a>
-                        <a href="/daftar" class="py-4 px-2 text-white hover:text-gray-200">Pendaftaran</a>
-                        <a href="/pengumuman" class="py-4 px-2 text-white hover:text-gray-200">Pengumuman</a>
-                        <a href="/bantuan" class="py-4 px-2 text-white hover:text-gray-200">Bantuan</a>
+                        <a href="/" class="py-4 px-2 text-white hover:text-gray-100">Beranda</a>
+                        <a href="/daftar" class="py-4 px-2 text-white hover:text-gray-100">Pendaftaran</a>
+                        <a href="/pengumuman" class="py-4 px-2 text-white hover:text-gray-100">Pengumuman</a>
+                        <a href="/bantuan" class="py-4 px-2 text-white hover:text-gray-100">Bantuan</a>
                     </div>
                 </div>
                 <!-- Secondary Nav -->
                 <div class="hidden md:flex items-center space-x-3">
-                    <a href="/login" class="py-2 px-4 text-white bg-blue-700 hover:bg-blue-800 rounded-lg">Login</a>
+                    <a href="/login" class="py-2 px-4 text-white bg-blue-500 hover:bg-blue-600 rounded-lg">Login</a>
                 </div>
             </div>
         </div>
@@ -41,7 +41,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-800 text-white">
+    <footer class="bg-blue-100 text-gray-700">
         <div class="max-w-7xl mx-auto px-4 py-8">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div>
@@ -53,21 +53,21 @@
                 <div>
                     <h3 class="text-lg font-semibold mb-4">Link Penting</h3>
                     <ul>
-                        <li><a href="/alur-pendaftaran" class="hover:text-gray-300">Alur Pendaftaran</a></li>
-                        <li><a href="/persyaratan" class="hover:text-gray-300">Persyaratan</a></li>
-                        <li><a href="/jadwal" class="hover:text-gray-300">Jadwal PPDB</a></li>
+                        <li><a href="/alur-pendaftaran" class="hover:text-blue-500">Alur Pendaftaran</a></li>
+                        <li><a href="/persyaratan" class="hover:text-blue-500">Persyaratan</a></li>
+                        <li><a href="/jadwal" class="hover:text-blue-500">Jadwal PPDB</a></li>
                     </ul>
                 </div>
                 <div>
                     <h3 class="text-lg font-semibold mb-4">Media Sosial</h3>
                     <div class="flex space-x-4">
-                        <a href="#" class="hover:text-gray-300">Facebook</a>
-                        <a href="#" class="hover:text-gray-300">Instagram</a>
-                        <a href="#" class="hover:text-gray-300">Twitter</a>
+                        <a href="#" class="hover:text-blue-500">Facebook</a>
+                        <a href="#" class="hover:text-blue-500">Instagram</a>
+                        <a href="#" class="hover:text-blue-500">Twitter</a>
                     </div>
                 </div>
             </div>
-            <div class="text-center pt-8 mt-8 border-t border-gray-700">
+            <div class="text-center pt-8 mt-8 border-t border-gray-300">
                 <p>&copy; {% now 'Y' %} PPDB Online. All rights reserved.</p>
             </div>
         </div>

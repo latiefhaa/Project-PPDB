@@ -22,14 +22,15 @@ class StudentForm(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     full_name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), nullable=False)  # Kolom email ditambahkan
     birth_date = db.Column(db.Date, nullable=False)
     parent_name = db.Column(db.String(100), nullable=False)
     address = db.Column(db.Text, nullable=False)
     previous_school = db.Column(db.String(100), nullable=False)
-    achievements = db.Column(db.Text, nullable=True)  # Prestasi dalam bentuk teks (opsional)
-    achievement_file = db.Column(db.String(255), nullable=True)  # Path file yang diunggah
+    achievements = db.Column(db.Text, nullable=True)
+    achievement_file = db.Column(db.String(255), nullable=True)
     registration_date = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), default="Menunggu")  # Status: Menunggu, Diterima, Ditolak
+    status = db.Column(db.String(20), default="Menunggu")
 
     # Relasi ke tabel User
     user = db.relationship('User', backref=db.backref('student_forms', lazy=True))
