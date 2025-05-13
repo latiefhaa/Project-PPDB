@@ -41,6 +41,8 @@ def submit_form():
     address = request.form.get('address')
     previous_school = request.form.get('previous_school')
     achievement_file = request.files.get('achievement_file')
+    email = request.form.get('email')
+    print(f"Email: {email}")  # Debug: Periksa nilai email
 
     # Konversi string tanggal menjadi objek datetime.date
     try:
@@ -62,13 +64,14 @@ def submit_form():
 
     # Simpan data ke database
     new_student = StudentForm(
-        user_id=current_user.id,
-        full_name=full_name,
-        birth_date=birth_date,
-        parent_name=parent_name,
-        address=address,
-        previous_school=previous_school,
-        achievement_file=filename  # Simpan nama file
+    user_id=current_user.id,
+    full_name=full_name,
+    email=email,  # Tambahkan email di sini
+    birth_date=birth_date,
+    parent_name=parent_name,
+    address=address,
+    previous_school=previous_school,
+    achievement_file=filename  # Simpan nama file
     )
     db.session.add(new_student)
     db.session.commit()

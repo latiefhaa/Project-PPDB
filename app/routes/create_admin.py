@@ -13,3 +13,7 @@ with app.app_context():
         )
         new_admin.set_password("password123")
         db.session.add(new_admin)
+        db.session.commit()  # Tambahkan ini untuk menyimpan perubahan
+        print("Admin berhasil dibuat!")
+    else:
+        print("Admin sudah ada di database.")
