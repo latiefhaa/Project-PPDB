@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask import Blueprint, render_template, redirect, url_for, request, flash, Flask
 from flask_login import login_required, current_user
 from app.models import StudentForm
 from app import db
@@ -11,6 +11,10 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+app = Flask(__name__)
+
+# Set maximum upload size to 16 MB (adjust as needed)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
 
 # Inisialisasi Blueprint
 main_bp = Blueprint('main', __name__)
@@ -36,19 +40,21 @@ def form():
 def submit_form():
     # Ambil data dari form
     full_name = request.form.get('full_name')
-    birth_date = request.form.get('birth_date')  # String dari form
+    birth_date = request.form.get('birth_date')
     parent_name = request.form.get('parent_name')
     address = request.form.get('address')
     previous_school = request.form.get('previous_school')
     achievement_file = request.files.get('achievement_file')
-    email = request.form.get('email')
-    print(f"Email: {email}")  # Debug: Periksa nilai email
+    payment_code = request.form.get('payment_code')
+    payment_confirmation = request.form.get('payment_confirmation')
 
-    # Konversi string tanggal menjadi objek datetime.date
-    try:
-        birth_date = datetime.strptime(birth_date, '%Y-%m-%d').date()
-    except ValueError:
-        flash('Format tanggal tidak valid. Gunakan format YYYY-MM-DD.', 'danger')
+    # Validasi data
+    if not payment_confirmation:
+        flash('Anda harus mencentang kotak konfirmasi pembayaran.', 'danger')
+        return redirect(url_for('main.form'))
+
+    if payment_code != "123456":  # Ganti dengan kode pembayaran yang valid
+        flash('Kode pembayaran tidak valid.', 'danger')
         return redirect(url_for('main.form'))
 
     # Simpan file prestasi
@@ -63,21 +69,63 @@ def submit_form():
             return redirect(url_for('main.form'))
 
     # Simpan data ke database
-    new_student = StudentForm(
-    user_id=current_user.id,
-    full_name=full_name,
-    email=email,  # Tambahkan email di sini
-    birth_date=birth_date,
-    parent_name=parent_name,
-    address=address,
-    previous_school=previous_school,
-    achievement_file=filename  # Simpan nama file
-    )
-    db.session.add(new_student)
-    db.session.commit()
+    try:
+        new_student = StudentForm(
+            user_id=current_user.id,
+            full_name=full_name,
+            birth_date=datetime.strptime(birth_date, '%Y-%m-%d').date(),
+            parent_name=parent_name,
+            address=address,
+            previous_school=previous_school,
+            achievement_file=filename,
+            payment_status="Paid"  # Tandai pembayaran sebagai selesai
+        )
+        db.session.add(new_student)
+        db.session.commit()
+        flash('Formulir berhasil dikirim!', 'success')
+        return redirect(url_for('main.dashboard'))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Terjadi kesalahan: {str(e)}', 'danger')
+        return redirect(url_for('main.form'))
 
-    flash('Formulir berhasil dikirim!', 'success')
-    return redirect(url_for('main.dashboard'))
+@main_bp.route('/payment_info', methods=['GET', 'POST'])
+@login_required
+def payment_info():
+    if request.method == 'POST':
+        # Ambil file bukti pembayaran
+        payment_proof = request.files.get('payment_proof')
+
+        # Validasi file
+        if payment_proof and payment_proof.filename != '':
+            if '.' in payment_proof.filename and \
+               payment_proof.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS:
+                filename = secure_filename(payment_proof.filename)
+                payment_path = os.path.join(UPLOAD_FOLDER, 'payment_proofs', filename)
+                os.makedirs(os.path.dirname(payment_path), exist_ok=True)
+                payment_proof.save(payment_path)
+
+                # Simpan bukti pembayaran ke database
+                current_user_form = StudentForm.query.filter_by(user_id=current_user.id).first()
+                if current_user_form:
+                    current_user_form.payment_proof = filename
+                    current_user_form.payment_status = "Proof Uploaded"
+                    db.session.commit()
+
+                    flash('Bukti pembayaran berhasil diunggah!', 'success')
+                    return redirect(url_for('main.dashboard'))
+                else:
+                    flash('Formulir pendaftaran tidak ditemukan.', 'danger')
+                    return redirect(url_for('main.form'))
+            else:
+                flash('Format file tidak valid. Hanya menerima PNG, JPG, JPEG, atau GIF.', 'danger')
+                return redirect(url_for('main.payment_info'))
+        else:
+            flash('Harap unggah bukti pembayaran.', 'danger')
+            return redirect(url_for('main.payment_info'))
+
+    # Jika GET, tampilkan halaman pembayaran
+    return render_template('payment_info.html')
 
 
 

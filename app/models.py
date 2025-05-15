@@ -21,14 +21,14 @@ class StudentForm(db.Model):
     __tablename__ = 'student_forms'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    full_name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), nullable=False)  # Kolom email ditambahkan
+    full_name = db.Column(db.String(150), nullable=False)
     birth_date = db.Column(db.Date, nullable=False)
-    parent_name = db.Column(db.String(100), nullable=False)
+    parent_name = db.Column(db.String(150), nullable=False)
     address = db.Column(db.Text, nullable=False)
-    previous_school = db.Column(db.String(100), nullable=False)
-    achievements = db.Column(db.Text, nullable=True)
-    achievement_file = db.Column(db.String(255), nullable=True)
+    previous_school = db.Column(db.String(150), nullable=False)
+    achievement_file = db.Column(db.String(150), nullable=True)
+    payment_status = db.Column(db.String(50), default="Pending")  # Status pembayaran
+    payment_proof = db.Column(db.String(150), nullable=True)  # File bukti pembayaran
     registration_date = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(20), default="Menunggu")
 

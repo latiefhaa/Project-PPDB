@@ -33,9 +33,7 @@
                 <thead>
                     <tr class="bg-blue-100">
                         <th class="py-3 px-4 border border-gray-300">Nama Lengkap</th>
-                        <th class="py-3 px-4 border border-gray-300">Tanggal Lahir</th>
-                        <th class="py-3 px-4 border border-gray-300">Nama Orang Tua</th>
-                        <th class="py-3 px-4 border border-gray-300">Sekolah Sebelumnya</th>
+                        <th class="py-3 px-4 border border-gray-300">Status Pembayaran</th>
                         <th class="py-3 px-4 border border-gray-300">Aksi</th>
                     </tr>
                 </thead>
@@ -43,36 +41,10 @@
                     {% for form in forms %}
                     <tr class="border-b border-gray-300 hover:bg-gray-100">
                         <td class="py-3 px-4 border border-gray-300">{{ form.full_name }}</td>
-                        <td class="py-3 px-4 border border-gray-300">{{ form.birth_date }}</td>
-                        <td class="py-3 px-4 border border-gray-300">{{ form.parent_name }}</td>
-                        <td class="py-3 px-4 border border-gray-300">{{ form.previous_school }}</td>
+                        <td class="py-3 px-4 border border-gray-300">{{ form.payment_status }}</td>
                         <td class="py-3 px-4 border border-gray-300">
-                            <div class="flex flex-col space-y-2">
-                                <!-- Tombol Lihat Detail -->
-                                <a href="{{ url_for('admin_bp.form_detail', form_id=form.id) }}" 
-                                   class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg w-full text-center">
-                                    Lihat Detail
-                                </a>
-                                <!-- Tombol Terima -->
-                                <form method="POST" action="{{ url_for('admin_bp.accept_form', form_id=form.id) }}">
-                                    <button type="submit" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg w-full">
-                                        Terima
-                                    </button>
-                                </form>
-                                <!-- Tombol Tolak -->
-                                <form method="POST" action="{{ url_for('admin_bp.reject_form', form_id=form.id) }}">
-                                    <textarea name="reason" placeholder="Masukkan alasan penolakan" 
-                                              class="w-full px-4 py-2 rounded-lg border border-gray-300 mb-2"></textarea>
-                                    <button type="submit" class="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg w-full">
-                                        Tolak
-                                    </button>
-                                </form>
-                            </div>
+                            <a href="{{ url_for('admin_bp.form_detail', form_id=form.id) }}">Detail</a>
                         </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="py-3 px-4 text-center text-gray-500">Tidak ada formulir yang tersedia.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

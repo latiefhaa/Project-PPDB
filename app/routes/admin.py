@@ -35,16 +35,6 @@ def form_detail(form_id):
     form = StudentForm.query.get_or_404(form_id)
     return render_template('form_detail.html', form=form)
 
-# Middleware untuk memastikan hanya admin yang dapat mengakses
-def admin_required(func):
-    def wrapper(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin:
-            flash("Anda tidak memiliki akses ke halaman ini.", "danger")
-            return redirect(url_for('main.index'))
-        return func(*args, **kwargs)
-    wrapper.__name__ = func.__name__
-    return wrapper
-
 @admin_bp.route('/accept/<int:form_id>', methods=['POST'])
 @login_required
 @admin_required
@@ -80,7 +70,7 @@ def reject_form(form_id):
     # Periksa apakah data sudah ditolak sebelumnya
     if form.status == "Ditolak":
         flash(f"Formulir atas nama {form.full_name} sudah ditolak sebelumnya.", "warning")
-        return redirect(url_for('admin_bp.rejected_forms'))  # Arahkan ke halaman list ditolak
+        return redirect(url_for('admin_bp.rejected_forms'))
 
     # Perbarui status di tabel StudentForm
     form.status = "Ditolak"
@@ -102,7 +92,7 @@ def reject_form(form_id):
     db.session.commit()
 
     flash(f"Formulir atas nama {form.full_name} ditolak.", "warning")
-    return redirect(url_for('admin_bp.rejected_forms'))  # Arahkan ke halaman list ditolak
+    return redirect(url_for('admin_bp.rejected_forms'))
 
 @admin_bp.route('/delete/<int:form_id>', methods=['POST'])
 @login_required
