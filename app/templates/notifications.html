@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifikasi - PPDB Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+        .toast {
+            animation: slideIn 0.5s ease-in-out;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="bg-blue-500 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <a href="/" class="text-2xl font-bold text-white">PPDB Online</a>
+                <div class="hidden md:flex space-x-6">
+                    <a href="{{ url_for('main.notifications') }}" class="text-white hover:text-gray-200 relative">
+                        Notifikasi
+                        {% if current_user.notifications and current_user.notifications|selectattr('read', 'equalto', false)|list|length > 0 %}
+                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                {{ current_user.notifications|selectattr('read', 'equalto', false)|list|length }}
+                            </span>
+                        {% endif %}
+                    </a>
+                    <a href="{{ url_for('main.dashboard') }}" class="text-white hover:text-gray-200">Dashboard</a>
+                    <a href="/logout" class="text-white hover:text-gray-200">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50">
+        {% for notification in notifications|sort(attribute='timestamp', reverse=true) if not notification.read %}
+        <div class="toast bg-white rounded-lg shadow-lg p-4 mb-4 border-l-4 w-96
+            {% if notification.type == 'acceptance' %}border-green-500
+            {% elif notification.type == 'rejection' %}border-red-500
+            {% else %}border-blue-500{% endif %}">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-gray-800">{{ notification.message }}</p>
+                    <p class="text-sm text-gray-500 mt-2">{{ notification.timestamp|datetime }}</p>
+                </div>
+                <button onclick="dismissToast(this)" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-grow container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <h2 class="text-2xl font-bold text-blue-600 mb-6">Notifikasi</h2>
+            
+            {% if notifications %}
+                {% for notification in notifications|sort(attribute='timestamp', reverse=true) %}
+                <div class="bg-white rounded-lg shadow-md p-4 mb-4 border-l-4 
+                    {% if notification.type == 'acceptance' %}border-green-500
+                    {% elif notification.type == 'rejection' %}border-red-500
+                    {% else %}border-blue-500{% endif %}
+                    {% if not notification.read %}bg-blue-50{% endif %}">
+                    <p class="text-gray-800">{{ notification.message }}</p>
+                    <p class="text-sm text-gray-500 mt-2">
+                        {{ notification.timestamp|datetime }}
+                    </p>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="bg-white rounded-lg shadow-md p-6 text-center">
+                    <p class="text-gray-600">Tidak ada notifikasi</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-blue-100 py-4">
+        <div class="max-w-7xl mx-auto text-center">
+            <p class="text-gray-600">&copy; 2025 PPDB Online. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        function dismissToast(button) {
+            const toast = button.closest('.toast');
+            toast.style.opacity = '0';
+            setTimeout(() => {
+                toast.remove();
+            }, 500);
+
+            // Mark notification as read (you'll need to implement this endpoint)
+            fetch('/mark-notification-as-read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    notification_id: toast.dataset.notificationId
+                })
+            });
+        }
+
+        // Auto-dismiss toasts after 5 seconds
+        document.querySelectorAll('.toast').forEach(toast => {
+            setTimeout(() => {
+                if (toast) {
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 500);
+                }
+            }, 5000);
+        });
+
+        // Function to fetch and display notifications
+        async function checkNotifications() {
+            const response = await fetch("{{ url_for('main.get_notifications') }}");
+            const notifications = await response.json();
+            
+            notifications.forEach(notification => {
+                showToast(notification);
+            });
+        }
+
+        // Show toast notification
+        function showToast(notification) {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast bg-white rounded-lg shadow-lg p-4 mb-4 border-l-4 w-96 ${
+                notification.type === 'acceptance' ? 'border-green-500' : 
+                notification.type === 'rejection' ? 'border-red-500' : 
+                'border-blue-500'
+            }`;
+            toast.dataset.notificationId = notification.id;
+
+            toast.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-800">${notification.message}</p>
+                        <p class="text-sm text-gray-500 mt-2">${notification.timestamp}</p>
+                    </div>
+                    <button onclick="dismissToast(this)" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+
+            toastContainer.appendChild(toast);
+            setTimeout(() => dismissToast(toast.querySelector('button')), 5000);
+        }
+
+        // Check for notifications when page loads
+        document.addEventListener('DOMContentLoaded', checkNotifications);
+
+        // Check for new notifications every 30 seconds
+        setInterval(checkNotifications, 30000);
+    </script>
+</body>
+</html>

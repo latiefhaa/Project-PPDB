@@ -8,6 +8,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Poppins', sans-serif; }
+        .toast {
+            animation: slideIn 0.5s ease-in-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
@@ -17,11 +24,67 @@
             <div class="flex justify-between items-center py-4">
                 <a href="/" class="text-2xl font-bold text-white">PPDB Online</a>
                 <div class="hidden md:flex space-x-6">
+                    <a href="{{ url_for('main.notifications') }}" class="text-white hover:text-gray-200 relative">
+                        Notifikasi
+                        {% if current_user.notifications and current_user.notifications|selectattr('read', 'equalto', false)|list|length > 0 %}
+                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                {{ current_user.notifications|selectattr('read', 'equalto', false)|list|length }}
+                            </span>
+                        {% endif %}
+                    </a>
                     <a href="/logout" class="text-white hover:text-gray-200">Logout</a>
                 </div>
             </div>
         </div>
     </nav>
+
+    <!-- Toast Container for Pop-up Notifications -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50"></div>
+
+    <!-- Status Section -->
+    {% if current_user.has_submitted_form %}
+    <div class="bg-white shadow-md p-4 mb-6">
+        <div class="max-w-4xl mx-auto">
+            {% set form = current_user.student_form %}
+            {% if form %}
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800">Status Pendaftaran:</h2>
+                        <p class="mt-2">
+                            {% if form.status == "Menunggu" %}
+                                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full">Menunggu</span>
+                            {% elif form.status == "Diterima" %}
+                                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full">Diterima</span>
+                            {% elif form.status == "Ditolak" %}
+                                <span class="bg-red-100 text-red-800 px-3 py-1 rounded-full">Ditolak</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Notifications Section -->
+    {% if current_user.notifications %}
+    <div class="max-w-4xl mx-auto mb-6 px-4">
+        <div class="bg-white rounded-lg shadow-md p-4">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Notifikasi Terbaru</h2>
+            {% for notification in current_user.notifications[-3:] %}
+            <div class="border-l-4 {% if notification.type == 'acceptance' %}border-green-500{% else %}border-red-500{% endif %} p-4 mb-3 {% if not notification.read %}bg-blue-50{% endif %}">
+                <p class="text-gray-800">{{ notification.message }}</p>
+                <p class="text-sm text-gray-500 mt-1">{{ notification.timestamp }}</p>
+            </div>
+            {% endfor %}
+            {% if current_user.notifications|length > 3 %}
+            <a href="{{ url_for('main.notifications') }}" class="text-blue-600 hover:text-blue-800">
+                Lihat semua notifikasi
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Hero Section -->
     <div class="flex-grow flex items-center justify-center">
@@ -45,5 +108,48 @@
             <p class="text-gray-600">&copy; 2025 PPDB Online. All rights reserved.</p>
         </div>
     </footer>
+
+    <script>
+        // Show toast notification
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            // Set border color based on notification type
+            const borderColor = {
+                'acceptance': 'border-green-500',
+                'payment': 'border-blue-500',
+                'rejection': 'border-red-500'
+            }[type] || 'border-gray-500';
+            
+            toast.className = `toast bg-white rounded-lg shadow-lg p-4 mb-4 border-l-4 w-96 ${borderColor}`;
+            
+            toast.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-800">${message}</p>
+                        <p class="text-sm text-gray-500 mt-2">${new Date().toLocaleString()}</p>
+                    </div>
+                    <button onclick="dismissToast(this)" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+
+            toastContainer.appendChild(toast);
+            setTimeout(() => dismissToast(toast.querySelector('button')), 7000); // Tampil lebih lama (7 detik)
+        }
+
+        // Show notifications when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            {% if current_user.notifications %}
+                {% for notification in current_user.notifications|sort(attribute='timestamp', reverse=true) if not notification.read %}
+                    showToast(`{{ notification.message }}`, `{{ notification.type }}`);
+                {% endfor %}
+            {% endif %}
+        });
+    </script>
 </body>
 </html>

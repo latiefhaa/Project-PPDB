@@ -24,16 +24,17 @@
     </nav>
 
     <!-- Dashboard Content -->
-    <div class="flex-grow flex items-center justify-center">
+    <div class="flex-grow p-6">
         <div class="max-w-6xl mx-auto bg-white rounded-lg shadow-lg p-6">
-            <h2 class="text-3xl font-bold text-blue-600 mb-6">Dashboard Admin</h2>
+            <h2 class="text-3xl font-bold text-blue-600 mb-6">Daftar Pendaftar</h2>
             
             <!-- Tabel Data Formulir -->
             <table class="w-full text-left text-gray-800 border-collapse">
                 <thead>
                     <tr class="bg-blue-100">
                         <th class="py-3 px-4 border border-gray-300">Nama Lengkap</th>
-                        <th class="py-3 px-4 border border-gray-300">Status Pembayaran</th>
+                        <th class="py-3 px-4 border border-gray-300">Sekolah Asal</th>
+                        <th class="py-3 px-4 border border-gray-300">Status</th>
                         <th class="py-3 px-4 border border-gray-300">Aksi</th>
                     </tr>
                 </thead>
@@ -41,14 +42,52 @@
                     {% for form in forms %}
                     <tr class="border-b border-gray-300 hover:bg-gray-100">
                         <td class="py-3 px-4 border border-gray-300">{{ form.full_name }}</td>
-                        <td class="py-3 px-4 border border-gray-300">{{ form.payment_status }}</td>
-                        <td class="py-3 px-4 border border-gray-300">
-                            <a href="{{ url_for('admin_bp.form_detail', form_id=form.id) }}">Detail</a>
+                        <td class="py-3 px-4 border border-gray-300">{{ form.previous_school }}</td>
+                        <td class="py-3 px-4 border border-gray-300">{{ form.status }}</td>
+                        <td class="py-3 px-4 border border-gray-300 space-x-2">
+                            <a href="{{ url_for('admin_bp.form_detail', form_id=form.id) }}" 
+                               class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">
+                                Detail
+                            </a>
+                            <form action="{{ url_for('admin_bp.accept_form', form_id=form.id) }}" method="POST" class="inline">
+                                <button type="submit" 
+                                        class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600">
+                                    Terima
+                                </button>
+                            </form>
+                            <button onclick="showRejectModal({{ form.id }})"
+                                    class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">
+                                Tolak
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Modal Reject -->
+    <div id="rejectModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-bold mb-4">Alasan Penolakan</h3>
+            <form id="rejectForm" method="POST">
+                <textarea name="reason" 
+                          class="w-full p-2 border rounded mb-4" 
+                          rows="3" 
+                          placeholder="Masukkan alasan penolakan"></textarea>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" 
+                            onclick="closeRejectModal()"
+                            class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                        Batal
+                    </button>
+                    <button type="submit"
+                            class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                        Kirim
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -58,5 +97,19 @@
             <p class="text-gray-600">&copy; 2025 PPDB Online. All rights reserved.</p>
         </div>
     </footer>
+
+    <script>
+        function showRejectModal(formId) {
+            const modal = document.getElementById('rejectModal');
+            const rejectForm = document.getElementById('rejectForm');
+            modal.classList.remove('hidden');
+            rejectForm.action = `/admin/reject/${formId}`;
+        }
+
+        function closeRejectModal() {
+            const modal = document.getElementById('rejectModal');
+            modal.classList.add('hidden');
+        }
+    </script>
 </body>
 </html>

@@ -17,3 +17,5 @@ with app.app_context():
         print("Admin berhasil dibuat!")
     else:
         print("Admin sudah ada di database.")
+
+        

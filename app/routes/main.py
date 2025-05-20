@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, Flask
+from flask import Blueprint, render_template, redirect, url_for, request, flash, Flask, jsonify
 from flask_login import login_required, current_user
 from app.models import StudentForm
 from app import db
@@ -24,9 +24,10 @@ def index():
     return render_template('index.html', user=current_user)
 
 @main_bp.route('/dashboard')
+@login_required
 def dashboard():
-    # Render halaman dashboard dengan data pengguna
-    return render_template('dashboard.html', user=current_user)
+    user_form = StudentForm.query.filter_by(user_id=current_user.id).first()
+    return render_template('dashboard.html', user=current_user, form=user_form)
 
 @main_bp.route('/form', methods=['GET'])
 @login_required
@@ -38,27 +39,32 @@ def form():
 @main_bp.route('/submit_form', methods=['POST'])
 @login_required
 def submit_form():
+    if current_user.has_submitted_form:
+        flash('Anda sudah pernah mengirimkan formulir sebelumnya.', 'warning')
+        return redirect(url_for('main.dashboard'))
+
     # Ambil data dari form
     full_name = request.form.get('full_name')
+    gender = request.form.get('gender')
+    birth_place = request.form.get('birth_place')
     birth_date = request.form.get('birth_date')
-    parent_name = request.form.get('parent_name')
+    religion = request.form.get('religion')
+    nisn = request.form.get('nisn')
+    father_name = request.form.get('father_name')
+    mother_name = request.form.get('mother_name')
+    parent_phone = request.form.get('parent_phone')
+    parent_occupation = request.form.get('parent_occupation')
     address = request.form.get('address')
     previous_school = request.form.get('previous_school')
-    achievement_file = request.files.get('achievement_file')
-    payment_code = request.form.get('payment_code')
-    payment_confirmation = request.form.get('payment_confirmation')
 
-    # Validasi data
-    if not payment_confirmation:
-        flash('Anda harus mencentang kotak konfirmasi pembayaran.', 'danger')
-        return redirect(url_for('main.form'))
-
-    if payment_code != "123456":  # Ganti dengan kode pembayaran yang valid
-        flash('Kode pembayaran tidak valid.', 'danger')
+    # Validasi field yang wajib diisi
+    if not all([full_name, gender, birth_place, birth_date, religion, nisn, father_name, mother_name, parent_phone, parent_occupation, address, previous_school]):
+        flash('Semua field harus diisi', 'danger')
         return redirect(url_for('main.form'))
 
     # Simpan file prestasi
     filename = None
+    achievement_file = request.files.get('achievement_file')
     if achievement_file and achievement_file.filename != '':
         if '.' in achievement_file.filename and \
            achievement_file.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS:
@@ -73,15 +79,26 @@ def submit_form():
         new_student = StudentForm(
             user_id=current_user.id,
             full_name=full_name,
+            gender=gender,
+            birth_place=birth_place,
             birth_date=datetime.strptime(birth_date, '%Y-%m-%d').date(),
-            parent_name=parent_name,
+            religion=religion,
+            nisn=nisn,
+            father_name=father_name,
+            mother_name=mother_name,
+            parent_phone=parent_phone,
+            parent_occupation=parent_occupation,
             address=address,
             previous_school=previous_school,
             achievement_file=filename,
-            payment_status="Paid"  # Tandai pembayaran sebagai selesai
+            status="Menunggu"
         )
         db.session.add(new_student)
+        
+        # Set flag has_submitted_form
+        current_user.has_submitted_form = True
         db.session.commit()
+        
         flash('Formulir berhasil dikirim!', 'success')
         return redirect(url_for('main.dashboard'))
     except Exception as e:
@@ -126,6 +143,49 @@ def payment_info():
 
     # Jika GET, tampilkan halaman pembayaran
     return render_template('payment_info.html')
+
+@main_bp.route('/notifications')
+@login_required
+def notifications():
+    return render_template('notifications.html', notifications=current_user.notifications or [])
+
+@main_bp.route('/mark-notification-as-read', methods=['POST'])
+@login_required
+def mark_notification_as_read():
+    data = request.get_json()
+    notification_id = data.get('notification_id')
+    
+    if current_user.notifications:
+        for notification in current_user.notifications:
+            if notification.get('id') == notification_id:
+                notification['read'] = True
+                break
+        
+        db.session.commit()
+        return jsonify({'status': 'success'})
+    
+    return jsonify({'status': 'error'}), 400
+
+@main_bp.route('/get-notifications')
+@login_required
+def get_notifications():
+    """Get unread notifications for pop-up display"""
+    if current_user.notifications:
+        unread = [n for n in current_user.notifications if not n.get('read', False)]
+        return jsonify(unread)
+    return jsonify([])
+
+@main_bp.route('/payment/<int:form_id>')
+@login_required
+def payment_page(form_id):
+    form = StudentForm.query.get_or_404(form_id)
+    
+    # Verify the form belongs to current user
+    if form.user_id != current_user.id:
+        flash('Anda tidak memiliki akses ke halaman ini', 'danger')
+        return redirect(url_for('main.dashboard'))
+        
+    return render_template('payment.html', form=form)
 
 
 

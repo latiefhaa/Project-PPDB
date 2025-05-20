@@ -17,39 +17,82 @@
             <div class="flex justify-between items-center py-4">
                 <a href="/" class="text-2xl font-bold text-white">PPDB Online</a>
                 <div class="hidden md:flex space-x-6">
+                    <a href="{{ url_for('admin_bp.dashboard_admin') }}" class="text-white hover:text-gray-200">Dashboard</a>
+                    <a href="{{ url_for('admin_bp.form_admin') }}" class="text-white hover:text-gray-200">Formulir Siswa</a>
                     <a href="/logout" class="text-white hover:text-gray-200">Logout</a>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <div class="flex-grow flex items-center justify-center">
-        <div class="max-w-4xl mx-auto text-center">
-            <h1 class="text-4xl font-bold text-blue-600 mb-6">Selamat Datang di PPDB Online</h1>
-            <p class="text-lg text-gray-600 mb-6">Silakan pilih salah satu menu di bawah ini:</p>
-            <div class="flex justify-center space-x-4">
-                <a href="/profile" class="bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg shadow-lg">
-                    Profil Saya
-                </a>
-                <a href="{{ url_for('admin_bp.form_admin') }}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg shadow-lg">
-                    Formulir Siswa
-                </a>
-                <a href="{{ url_for('admin_bp.accepted_forms') }}" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg">
-                    Lihat Formulir Diterima
-                </a>
-                <a href="{{ url_for('admin_bp.rejected_forms') }}" class="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg">
-                    Lihat Formulir Ditolak
-                </a>
+    <!-- Main Content -->
+    <div class="flex-grow container mx-auto px-4 py-12">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-blue-600 mb-4">Selamat Datang di Dashboard Admin</h1>
+            <p class="text-lg text-gray-600">Silakan pilih menu yang tersedia:</p>
+        </div>
+
+        <!-- Menu Cards -->
+        <div class="max-w-6xl mx-auto space-y-8">
+            <!-- Manajemen Formulir -->
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 px-2">Manajemen Formulir</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <a href="{{ url_for('admin_bp.form_admin') }}" 
+                       class="bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-xl shadow-lg transform transition-all duration-200 hover:-translate-y-1">
+                        <div class="text-center">
+                            <span class="block text-xl font-semibold mb-2">Formulir Masuk</span>
+                            <span class="text-sm opacity-90">Kelola pendaftaran baru</span>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('admin_bp.accepted_forms') }}" 
+                       class="bg-green-500 hover:bg-green-600 text-white p-6 rounded-xl shadow-lg transform transition-all duration-200 hover:-translate-y-1">
+                        <div class="text-center">
+                            <span class="block text-xl font-semibold mb-2">Diterima</span>
+                            <span class="text-sm opacity-90">Daftar siswa diterima</span>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('admin_bp.rejected_forms') }}" 
+                       class="bg-red-500 hover:bg-red-600 text-white p-6 rounded-xl shadow-lg transform transition-all duration-200 hover:-translate-y-1">
+                        <div class="text-center">
+                            <span class="block text-xl font-semibold mb-2">Ditolak</span>
+                            <span class="text-sm opacity-90">Daftar siswa ditolak</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Manajemen Pembayaran -->
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 px-2">Manajemen Pembayaran</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <a href="{{ url_for('admin_bp.pending_payments') }}" 
+                       class="bg-yellow-500 hover:bg-yellow-600 text-white p-6 rounded-xl shadow-lg transform transition-all duration-200 hover:-translate-y-1">
+                        <div class="text-center">
+                            <span class="block text-xl font-semibold mb-2">Menunggu Pembayaran</span>
+                            <span class="text-sm opacity-90">Verifikasi bukti pembayaran</span>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('admin_bp.completed_payments') }}" 
+                       class="bg-emerald-500 hover:bg-emerald-600 text-white p-6 rounded-xl shadow-lg transform transition-all duration-200 hover:-translate-y-1">
+                        <div class="text-center">
+                            <span class="block text-xl font-semibold mb-2">Pembayaran Lunas</span>
+                            <span class="text-sm opacity-90">Daftar pembayaran selesai</span>
+                        </div>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Footer -->
-    <footer class="bg-blue-100 py-4">
+    <footer class="bg-blue-100 py-4 mt-auto">
         <div class="max-w-7xl mx-auto text-center">
             <p class="text-gray-600">&copy; 2025 PPDB Online. All rights reserved.</p>
         </div>
     </footer>
 </body>
+</html>
+</html></body></body>
 </html>
