@@ -1,9 +1,12 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file
 from flask_login import login_required, current_user
-from app.models import db, User, StudentForm, AcceptedStudent, RejectedStudent
+from app.models import db, User, StudentForm, AcceptedStudent, RejectedStudent, PaymentSPP
 from datetime import datetime
 from flask_mail import Message
 from app import mail  # Add this import
+from flask_wtf.csrf import generate_csrf
+import pandas as pd
+import io
 
 # Inisialisasi Blueprint untuk admin
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/admin')
@@ -22,7 +25,27 @@ def admin_required(func):
 @login_required
 @admin_required
 def dashboard_admin():
-    return render_template('dashboard_admin.html')
+    # Get accepted students
+    accepted_students = StudentForm.query.filter_by(status="Diterima").all()
+    
+    # Get statistics
+    stats = {
+        'total': {
+            'registrations': StudentForm.query.count(),
+            'accepted': StudentForm.query.filter_by(status="Diterima").count(),
+            'pending': StudentForm.query.filter_by(status="Menunggu").count(),
+            'rejected': StudentForm.query.filter_by(status="Ditolak").count()
+        },
+        'payment': {
+            'completed': StudentForm.query.filter_by(payment_status="Lunas").count(),
+            'pending': StudentForm.query.filter_by(payment_status="Menunggu Verifikasi").count(),
+            'not_paid': StudentForm.query.filter_by(payment_status="Belum Bayar").count()
+        }
+    }
+    
+    return render_template('dashboard_admin.html', 
+                         students=accepted_students,
+                         stats=stats)
 
 @admin_bp.route('/form_admin', methods=['GET'])
 @login_required
@@ -43,93 +66,71 @@ def form_detail(form_id):
 @login_required
 @admin_required
 def accept_form(form_id):
-    form = StudentForm.query.get_or_404(form_id)
-    
-    if form.status != "Menunggu":
-        flash('Formulir ini sudah diproses sebelumnya.', 'warning')
-        return redirect(url_for('admin_bp.form_admin'))
-    
+    print("\n=== ACCEPTING FORM ===")
     try:
-        # Update form status
+        # Get form
+        form = StudentForm.query.get_or_404(form_id)
+        print(f"Found form for: {form.full_name}")
+
+        # Update status
         form.status = "Menunggu Pembayaran"
         form.payment_status = "Belum Bayar"
-        
-        # Create accepted student record
-        accepted = AcceptedStudent(
-            student_form_id=form.id,
-            full_name=form.full_name,
-            birth_date=form.birth_date,
-            parent_name=form.father_name,
-            previous_school=form.previous_school
-        )
-        db.session.add(accepted)
-        
-        # Add notifications
+        print("Updated form status")
+
+        # Add notification for user
         user = User.query.get(form.user_id)
-        if user.notifications is None:
+        if not user.notifications:
             user.notifications = []
             
-        payment_link = url_for('main.payment_page', form_id=form.id, _external=True)
-        
-        notifications = [
-            {
-                'type': 'acceptance',
-                'message': 'Selamat! Pendaftaran Anda telah diterima.',
-                'timestamp': datetime.utcnow().isoformat(),
-                'read': False
-            },
-            {
-                'type': 'payment',
-                'message': f'Silakan lakukan pembayaran dengan mengklik link berikut: {payment_link}',
-                'timestamp': datetime.utcnow().isoformat(),
-                'read': False,
-                'action_url': payment_link,
-                'action_text': 'Bayar Sekarang'
-            }
-        ]
-        user.notifications.extend(notifications)
-        
-        # Send email
+        payment_url = url_for('main.payment_info', _external=True)
+        notification = {
+            'id': len(user.notifications) + 1,
+            'type': 'acceptance',
+            'message': 'Selamat! Pendaftaran Anda telah diterima. Silakan lakukan pembayaran dalam waktu 3x24 jam.',
+            'timestamp': datetime.utcnow().isoformat(),
+            'read': False,
+            'has_action': True,
+            'action_url': payment_url,
+            'action_text': 'Bayar Sekarang',
+            'is_important': True
+        }
+        user.notifications.append(notification)
+        print("Added notification")
+
+        # Send email notification
         try:
             msg = Message(
-                'Selamat! Pendaftaran Anda Diterima',
+                'Pendaftaran Diterima - PPDB Online',
                 recipients=[user.email]
             )
             msg.html = f"""
             <h2>Selamat {form.full_name}!</h2>
             <p>Pendaftaran Anda telah diterima di sekolah kami.</p>
-            
-            <h3>Langkah Selanjutnya:</h3>
-            <p>Silakan melakukan pembayaran biaya pendaftaran:</p>
-            <ul>
-                <li>Nominal: Rp. 500.000</li>
-                <li>Bank: BCA</li>
-                <li>No. Rekening: 1234567890</li>
-                <li>Atas Nama: PPDB Online</li>
-            </ul>
-            
-            <p>
-                <a href="{payment_link}" 
-                   style="background-color: #4CAF50; color: white; padding: 10px 20px; 
-                          text-decoration: none; border-radius: 5px; display: inline-block;">
-                    Lakukan Pembayaran
-                </a>
-            </p>
+            <p>Silakan melakukan pembayaran sebesar Rp. 500.000 dalam waktu 3x24 jam.</p>
+            <p>Klik link berikut untuk melakukan pembayaran:</p>
+            <a href="{payment_url}" style="background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                Bayar Sekarang
+            </a>
+            <br><br>
+            <p>Terima kasih,<br>Tim PPDB Online</p>
             """
             mail.send(msg)
+            print("Email notification sent")
         except Exception as mail_error:
-            print(f"Email error: {str(mail_error)}")
-            flash('Penerimaan berhasil tetapi gagal mengirim email', 'warning')
-        
+            print(f"Failed to send email: {str(mail_error)}")
+
+        # Save changes
         db.session.commit()
-        flash('Siswa berhasil diterima dan notifikasi telah dikirim', 'success')
+        print("Changes saved to database")
         
+        flash('Siswa berhasil diterima dan pemberitahuan telah dikirim', 'success')
+        return redirect(url_for('admin_bp.form_admin'))
+
     except Exception as e:
+        print(f"ERROR: {str(e)}")
         db.session.rollback()
-        print(f"Error in accept_form: {str(e)}")
-        flash(f'Terjadi kesalahan: {str(e)}', 'error')
-    
-    return redirect(url_for('admin_bp.form_admin'))
+        flash('Gagal memproses penerimaan siswa', 'error')
+        return redirect(url_for('admin_bp.form_admin'))
 
 @admin_bp.route('/reject/<int:form_id>', methods=['POST'])
 @login_required
@@ -157,7 +158,7 @@ def reject_form(form_id):
             reason=reason
         )
         db.session.add(rejected)
-        
+
         # Add notification
         user = User.query.get(form.user_id)
         if user.notifications is None:
@@ -214,7 +215,21 @@ def delete_form(form_id):
 @login_required
 @admin_required
 def accepted_forms():
-    forms = StudentForm.query.filter_by(status="Diterima").all()
+    # Add debug prints
+    all_forms = StudentForm.query.all()
+    print("\nAll forms in database:")
+    for f in all_forms:
+        print(f"ID: {f.id}, Name: {f.full_name}, Status: {f.status}, Payment: {f.payment_status}")
+
+    # Get accepted forms
+    forms = StudentForm.query.filter(
+        StudentForm.status.in_(["Diterima", "Menunggu Pembayaran"])
+    ).all()
+    
+    print("\nAccepted forms:")
+    for f in forms:
+        print(f"ID: {f.id}, Name: {f.full_name}, Status: {f.status}, Payment: {f.payment_status}")
+    
     return render_template('accepted_forms.html', forms=forms)
 
 @admin_bp.route('/rejected_forms', methods=['GET'])
@@ -242,12 +257,13 @@ def rejected_students():
 @login_required
 @admin_required
 def pending_payments():
-    forms = StudentForm.query.filter_by(
+    # Get forms waiting for payment verification
+    pending_forms = StudentForm.query.filter_by(
         status="Menunggu Pembayaran",
-        payment_status="Belum Bayar"
+        payment_status="Menunggu Verifikasi"
     ).all()
-    current_year = datetime.now().year
-    return render_template('pending_payments.html', forms=forms, year=current_year)
+    
+    return render_template('pending_payments.html', forms=pending_forms)
 
 @admin_bp.route('/completed_payments')
 @login_required
@@ -263,42 +279,333 @@ def completed_payments():
 @admin_required
 def verify_payment(form_id):
     form = StudentForm.query.get_or_404(form_id)
+    
     try:
+        # Update status
         form.payment_status = "Lunas"
         form.status = "Diterima"
         
-        # Add notification
-        user = User.query.get(form.user_id)
-        if user.notifications is None:
-            user.notifications = []
-            
+        # Kirim notifikasi
         notification = {
             'type': 'payment_verified',
             'message': 'Pembayaran Anda telah diverifikasi. Selamat bergabung!',
             'timestamp': datetime.utcnow().isoformat(),
             'read': False
         }
+        
+        user = User.query.get(form.user_id)
+        if not user.notifications:
+            user.notifications = []
         user.notifications.append(notification)
         
-        # Send email
-        msg = Message(
-            'Pembayaran Berhasil Diverifikasi',
-            sender='your-email@gmail.com',
-            recipients=[user.email]
-        )
-        msg.html = f"""
-        <h2>Pembayaran Berhasil!</h2>
-        <p>Halo {form.full_name},</p>
-        <p>Pembayaran Anda telah kami verifikasi. Selamat bergabung sebagai siswa baru!</p>
-        <p>Silakan tunggu informasi selanjutnya mengenai jadwal masuk sekolah.</p>
-        <br>
-        Salam,<br>
-        Tim PPDB Online
-        """
-        mail.send(msg)
+        # Kirim email
+        try:
+            msg = Message(
+                'Pembayaran Berhasil Diverifikasi',
+                sender='your-email@gmail.com',
+                recipients=[user.email]
+            )
+            msg.html = f"""
+                <h2>Selamat {form.full_name}!</h2>
+                <p>Pembayaran Anda telah diverifikasi.</p>
+                <p>Selamat bergabung di sekolah kami!</p>
+                <br>
+                <p>Salam,<br>Tim PPDB Online</p>
+            """
+            mail.send(msg)
+        except Exception as mail_error:
+            print(f"Failed to send email: {str(mail_error)}")
         
         db.session.commit()
         flash('Pembayaran berhasil diverifikasi', 'success')
+        
     except Exception as e:
         db.session.rollback()
         flash(f'Terjadi kesalahan: {str(e)}', 'error')
+        
+    return redirect(url_for('admin_bp.pending_payments'))  # Fixed endpoint reference
+
+@admin_bp.route('/manage_users')
+@login_required
+@admin_required
+def manage_users():
+    users = User.query.filter_by(is_admin=False).all()
+    return render_template('manage_users.html', users=users)
+
+@admin_bp.route('/manage_forms')
+@login_required
+@admin_required
+def manage_forms():
+    try:
+        # Add debug logging
+        all_forms = StudentForm.query.all()
+        print("\nAll forms in database:")
+        for form in all_forms:
+            print(f"ID: {form.id}, Name: {form.full_name}, Status: {form.status}")
+        
+        csrf_token = generate_csrf()
+        return render_template('manage_forms.html', forms=all_forms, csrf_token=csrf_token)
+    except Exception as e:
+        print(f"Error in manage_forms: {str(e)}")
+        return f"Error: {str(e)}", 500
+
+@admin_bp.route('/delete_user/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_user(user_id):
+    try:
+        user = User.query.get_or_404(user_id)
+        if user.is_admin:
+            return jsonify({'success': False, 'message': 'Tidak dapat menghapus akun admin'})
+        
+        # Delete associated forms first
+        StudentForm.query.filter_by(user_id=user.id).delete()
+        db.session.delete(user)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'User {user.username} berhasil dihapus'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@admin_bp.route('/delete_form/<int:form_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_form_ajax(form_id):
+    try:
+        print(f"\n=== Deleting form ID: {form_id} ===")
+        
+        # Get form and user
+        form = StudentForm.query.get_or_404(form_id)
+        print(f"Found form: {form.full_name}")
+        
+        # Begin transaction
+        db.session.begin_nested()
+        
+        try:
+            # 1. Delete all SPP records
+            spp_count = PaymentSPP.query.filter_by(student_form_id=form.id).delete()
+            print(f"Deleted {spp_count} SPP records")
+            
+            # 2. Delete accepted student record if exists
+            acc_count = AcceptedStudent.query.filter_by(student_form_id=form.id).delete()
+            print(f"Deleted {acc_count} accepted records")
+            
+            # 3. Delete rejected student record if exists
+            rej_count = RejectedStudent.query.filter_by(student_form_id=form.id).delete()
+            print(f"Deleted {rej_count} rejected records")
+            
+            # 4. Clean up user data
+            user = User.query.get(form.user_id)
+            if user:
+                print(f"Cleaning up user data for: {user.username}")
+                if user.notifications:
+                    user.notifications = [n for n in user.notifications 
+                                        if not any(str(form.id) in str(v) for v in n.values())]
+                user.has_submitted_form = False
+            
+            # 5. Delete the form itself
+            db.session.delete(form)
+            print("Form deleted")
+            
+            # Commit the nested transaction
+            db.session.commit()
+            print("Transaction committed successfully")
+            
+            return jsonify({
+                'success': True,
+                'message': f'Formulir {form.full_name} berhasil dihapus',
+                'csrf_token': generate_csrf()
+            })
+            
+        except Exception as inner_error:
+            # Rollback the nested transaction
+            db.session.rollback()
+            raise inner_error
+            
+    except Exception as e:
+        # Rollback the main transaction
+        db.session.rollback()
+        error_msg = f"Error: {str(e)}"
+        print(f"Failed to delete form: {error_msg}")
+        return jsonify({
+            'success': False,
+            'message': f'Gagal menghapus formulir: {error_msg}'
+        }), 500
+
+@admin_bp.route('/spp_payments/<int:student_id>')
+@login_required
+@admin_required
+def spp_payments(student_id):
+    student = StudentForm.query.get_or_404(student_id)
+    payments = PaymentSPP.query.filter_by(student_form_id=student_id).all()
+    
+    # Generate payment records for 12 months if not exists
+    current_year = datetime.now().year
+    months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+              'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+    
+    for month in months:
+        existing = PaymentSPP.query.filter_by(
+            student_form_id=student_id,
+            month=month,
+            year=current_year
+        ).first()
+        
+        if not existing:
+            payment = PaymentSPP(
+                student_form_id=student_id,
+                amount=500000,  # Jumlah SPP
+                month=month,
+                year=current_year,
+                payment_status="Belum Bayar"
+            )
+            db.session.add(payment)
+    
+    db.session.commit()
+    return render_template('spp_payments.html', student=student, payments=payments)
+
+@admin_bp.route('/verify_spp/<int:payment_id>', methods=['POST'])
+@login_required
+@admin_required
+def verify_spp(payment_id):
+    payment = PaymentSPP.query.get_or_404(payment_id)
+    
+    try:
+        payment.payment_status = "Lunas"
+        payment.verified = True
+        payment.payment_date = datetime.utcnow()
+        
+        # Add notification
+        student = StudentForm.query.get(payment.student_form_id)
+        user = User.query.get(student.user_id)
+        
+        notification = {
+            'type': 'spp_verified',
+            'message': f'Pembayaran SPP bulan {payment.month} telah diverifikasi',
+            'timestamp': datetime.utcnow().isoformat(),
+            'read': False
+        }
+        user.notifications.append(notification)
+        
+        db.session.commit()
+        flash('Pembayaran SPP berhasil diverifikasi', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Gagal memverifikasi pembayaran: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_bp.spp_payments', student_id=payment.student_form_id))
+
+# Add these new routes
+@admin_bp.route('/export_registrations')
+@login_required
+@admin_required
+def export_registrations():
+    try:
+        # Get all forms
+        forms = StudentForm.query.all()
+        
+        # Create DataFrame
+        data = []
+        for form in forms:
+            data.append({
+                'ID': form.id,
+                'Nama Lengkap': form.full_name,
+                'Jenis Kelamin': 'Laki-laki' if form.gender == 'L' else 'Perempuan',
+                'Tempat Lahir': form.birth_place,
+                'Tanggal Lahir': form.birth_date.strftime('%d-%m-%Y'),
+                'Agama': form.religion,
+                'NISN': form.nisn,
+                'Nama Ayah': form.father_name,
+                'Nama Ibu': form.mother_name,
+                'No. HP Orang Tua': form.parent_phone,
+                'Pekerjaan Orang Tua': form.parent_occupation,
+                'Alamat': form.address,
+                'Asal Sekolah': form.previous_school,
+                'Status': form.status,
+                'Status Pembayaran': form.payment_status,
+                'Tanggal Daftar': form.created_at.strftime('%d-%m-%Y %H:%M')
+            })
+        
+        df = pd.DataFrame(data)
+        
+        # Create Excel buffer
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Data Pendaftaran', index=False)
+        
+        output.seek(0)
+        
+        # Generate filename with timestamp
+        filename = f'Data_Pendaftaran_PPDB_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        print(f"Error exporting data: {str(e)}")
+        flash('Gagal mengekspor data', 'error')
+        return redirect(url_for('admin_bp.dashboard_admin'))
+
+@admin_bp.route('/registration_statistics')
+@login_required
+@admin_required
+def registration_statistics():
+    try:
+        # Basic statistics
+        total_registrations = StudentForm.query.count()
+        total_accepted = StudentForm.query.filter_by(status="Diterima").count()
+        total_pending = StudentForm.query.filter_by(status="Menunggu").count()
+        total_rejected = StudentForm.query.filter_by(status="Ditolak").count()
+        
+        # Gender statistics
+        male_count = StudentForm.query.filter_by(gender="L").count()
+        female_count = StudentForm.query.filter_by(gender="P").count()
+        
+        # Payment statistics
+        payment_completed = StudentForm.query.filter_by(payment_status="Lunas").count()
+        payment_pending = StudentForm.query.filter_by(payment_status="Menunggu Verifikasi").count()
+        payment_not_paid = StudentForm.query.filter_by(payment_status="Belum Bayar").count()
+        
+        # Religion statistics
+        religions = db.session.query(
+            StudentForm.religion,
+            db.func.count(StudentForm.id)
+        ).group_by(StudentForm.religion).all()
+        
+        religion_labels = [r[0] for r in religions]
+        religion_data = [r[1] for r in religions]
+        
+        stats = {
+            'total': {
+                'registrations': total_registrations,
+                'accepted': total_accepted,
+                'pending': total_pending,
+                'rejected': total_rejected
+            },
+            'gender': {
+                'male': male_count,
+                'female': female_count
+            },
+            'payment': {
+                'completed': payment_completed,
+                'pending': payment_pending,
+                'not_paid': payment_not_paid
+            },
+            'religion': {
+                'labels': religion_labels,
+                'data': religion_data
+            }
+        }
+        
+        return render_template('statistics.html', stats=stats)
+        
+    except Exception as e:
+        print(f"Error generating statistics: {str(e)}")
+        flash('Gagal memuat statistik', 'error')
+        return redirect(url_for('admin_bp.dashboard_admin'))

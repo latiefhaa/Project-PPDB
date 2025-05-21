@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistik PPDB - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-blue-500 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <a href="{{ url_for('admin_bp.dashboard_admin') }}" class="text-2xl font-bold text-white">PPDB Online</a>
+                <div class="flex space-x-4">
+                    <a href="{{ url_for('admin_bp.export_registrations') }}" 
+                       class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        Export Excel
+                    </a>
+                    <a href="{{ url_for('admin_bp.dashboard_admin') }}" 
+                       class="text-white hover:text-gray-200">
+                        Kembali ke Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Statistik Pendaftaran PPDB</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Card 1: Status Pendaftaran -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4">Status Pendaftaran</h2>
+                <canvas id="statusChart"></canvas>
+                <div class="mt-4 space-y-2">
+                    <p class="text-sm">Total Pendaftar: {{ stats.total.registrations }}</p>
+                    <p class="text-sm text-green-600">Diterima: {{ stats.total.accepted }}</p>
+                    <p class="text-sm text-yellow-600">Menunggu: {{ stats.total.pending }}</p>
+                    <p class="text-sm text-red-600">Ditolak: {{ stats.total.rejected }}</p>
+                </div>
+            </div>
+
+            <!-- Card 2: Jenis Kelamin -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4">Jenis Kelamin</h2>
+                <canvas id="genderChart"></canvas>
+                <div class="mt-4 space-y-2">
+                    <p class="text-sm text-blue-600">Laki-laki: {{ stats.gender.male }}</p>
+                    <p class="text-sm text-pink-600">Perempuan: {{ stats.gender.female }}</p>
+                </div>
+            </div>
+
+            <!-- Card 3: Status Pembayaran -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4">Status Pembayaran</h2>
+                <canvas id="paymentChart"></canvas>
+                <div class="mt-4 space-y-2">
+                    <p class="text-sm text-green-600">Lunas: {{ stats.payment.completed }}</p>
+                    <p class="text-sm text-yellow-600">Menunggu Verifikasi: {{ stats.payment.pending }}</p>
+                    <p class="text-sm text-red-600">Belum Bayar: {{ stats.payment.not_paid }}</p>
+                </div>
+            </div>
+
+            <!-- Card 4: Agama -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4">Agama</h2>
+                <canvas id="religionChart"></canvas>
+                <div class="mt-4" id="religionStats"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Status Pendaftaran Chart
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Diterima', 'Menunggu', 'Ditolak'],
+                datasets: [{
+                    data: [
+                        {{ stats.total.accepted }},
+                        {{ stats.total.pending }},
+                        {{ stats.total.rejected }}
+                    ],
+                    backgroundColor: ['#10B981', '#F59E0B', '#EF4444']
+                }]
+            }
+        });
+
+        // Gender Chart
+        new Chart(document.getElementById('genderChart'), {
+            type: 'pie',
+            data: {
+                labels: ['Laki-laki', 'Perempuan'],
+                datasets: [{
+                    data: [
+                        {{ stats.gender.male }},
+                        {{ stats.gender.female }}
+                    ],
+                    backgroundColor: ['#3B82F6', '#EC4899']
+                }]
+            }
+        });
+
+        // Payment Chart
+        new Chart(document.getElementById('paymentChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Lunas', 'Menunggu Verifikasi', 'Belum Bayar'],
+                datasets: [{
+                    data: [
+                        {{ stats.payment.completed }},
+                        {{ stats.payment.pending }},
+                        {{ stats.payment.not_paid }}
+                    ],
+                    backgroundColor: ['#10B981', '#F59E0B', '#EF4444']
+                }]
+            }
+        });
+
+        // Religion Chart
+        new Chart(document.getElementById('religionChart'), {
+            type: 'pie',
+            data: {
+                labels: {{ stats.religion.labels | tojson }},
+                datasets: [{
+                    data: {{ stats.religion.data }},
+                    backgroundColor: [
+                        '#3B82F6', '#EC4899', '#F59E0B', 
+                        '#10B981', '#6366F1', '#8B5CF6'
+                    ]
+                }]
+            }
+        });
+    </script>
+</body>
+</html>

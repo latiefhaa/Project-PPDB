@@ -3,20 +3,14 @@ from flask_login import login_required, current_user
 from app.models import StudentForm
 from app import db
 from datetime import datetime
-import os
 from werkzeug.utils import secure_filename
+import os
 
-UPLOAD_FOLDER = 'app/static/uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+UPLOAD_FOLDER = 'app/static/uploads/payments'
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-app = Flask(__name__)
-
-# Set maximum upload size to 16 MB (adjust as needed)
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
-
-# Inisialisasi Blueprint
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
@@ -26,8 +20,25 @@ def index():
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
+    # Get user's form and notifications
     user_form = StudentForm.query.filter_by(user_id=current_user.id).first()
-    return render_template('dashboard.html', user=current_user, form=user_form)
+    notifications = current_user.notifications or []
+    
+    # Get any unread notifications
+    unread_notifications = [n for n in notifications if not n.get('read', False)]
+    
+    # Get payment info if form exists and waiting for payment
+    payment_required = False
+    if user_form and user_form.status == "Menunggu Pembayaran":
+        payment_required = True
+    
+    return render_template(
+        'dashboard.html',
+        user=current_user,
+        form=user_form,
+        notifications=unread_notifications,
+        payment_required=payment_required
+    )
 
 @main_bp.route('/form', methods=['GET'])
 @login_required
@@ -39,132 +50,138 @@ def form():
 @main_bp.route('/submit_form', methods=['POST'])
 @login_required
 def submit_form():
-    if current_user.has_submitted_form:
-        flash('Anda sudah pernah mengirimkan formulir sebelumnya.', 'warning')
-        return redirect(url_for('main.dashboard'))
-
-    # Ambil data dari form
-    full_name = request.form.get('full_name')
-    gender = request.form.get('gender')
-    birth_place = request.form.get('birth_place')
-    birth_date = request.form.get('birth_date')
-    religion = request.form.get('religion')
-    nisn = request.form.get('nisn')
-    father_name = request.form.get('father_name')
-    mother_name = request.form.get('mother_name')
-    parent_phone = request.form.get('parent_phone')
-    parent_occupation = request.form.get('parent_occupation')
-    address = request.form.get('address')
-    previous_school = request.form.get('previous_school')
-
-    # Validasi field yang wajib diisi
-    if not all([full_name, gender, birth_place, birth_date, religion, nisn, father_name, mother_name, parent_phone, parent_occupation, address, previous_school]):
-        flash('Semua field harus diisi', 'danger')
-        return redirect(url_for('main.form'))
-
-    # Simpan file prestasi
-    filename = None
-    achievement_file = request.files.get('achievement_file')
-    if achievement_file and achievement_file.filename != '':
-        if '.' in achievement_file.filename and \
-           achievement_file.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS:
-            filename = secure_filename(achievement_file.filename)
-            achievement_file.save(os.path.join(UPLOAD_FOLDER, filename))
-        else:
-            flash('Format file tidak valid. Hanya menerima PNG, JPG, JPEG, atau GIF.', 'danger')
-            return redirect(url_for('main.form'))
-
-    # Simpan data ke database
+    print("\n=== DEBUG: Form Submission Start ===")
+    
     try:
+        # Get form data
+        form_data = {
+            'full_name': request.form.get('full_name'),
+            'gender': request.form.get('gender'),
+            'birth_place': request.form.get('birth_place'),
+            'birth_date': request.form.get('birth_date'),
+            'religion': request.form.get('religion'),
+            'nisn': request.form.get('nisn'),
+            'father_name': request.form.get('father_name'),
+            'mother_name': request.form.get('mother_name'),
+            'parent_phone': request.form.get('parent_phone'),
+            'parent_occupation': request.form.get('parent_occupation'),
+            'address': request.form.get('address'),
+            'previous_school': request.form.get('previous_school')
+        }
+
+        print("Form data received:", form_data)
+        
+        # Create new form
         new_student = StudentForm(
             user_id=current_user.id,
-            full_name=full_name,
-            gender=gender,
-            birth_place=birth_place,
-            birth_date=datetime.strptime(birth_date, '%Y-%m-%d').date(),
-            religion=religion,
-            nisn=nisn,
-            father_name=father_name,
-            mother_name=mother_name,
-            parent_phone=parent_phone,
-            parent_occupation=parent_occupation,
-            address=address,
-            previous_school=previous_school,
-            achievement_file=filename,
+            full_name=form_data['full_name'],
+            gender=form_data['gender'],
+            birth_place=form_data['birth_place'],
+            birth_date=datetime.strptime(form_data['birth_date'], '%Y-%m-%d').date(),
+            religion=form_data['religion'],
+            nisn=form_data['nisn'],
+            father_name=form_data['father_name'],
+            mother_name=form_data['mother_name'],
+            parent_phone=form_data['parent_phone'],
+            parent_occupation=form_data['parent_occupation'],
+            address=form_data['address'],
+            previous_school=form_data['previous_school'],
             status="Menunggu"
         )
-        db.session.add(new_student)
         
-        # Set flag has_submitted_form
+        print("New student object created")
+        
+        # Add to database
+        db.session.add(new_student)
+        print("Added to session")
+        
         current_user.has_submitted_form = True
+        print("User submitted form flag updated")
+        
+        # Commit changes
         db.session.commit()
+        print("Changes committed to database")
         
         flash('Formulir berhasil dikirim!', 'success')
         return redirect(url_for('main.dashboard'))
+        
     except Exception as e:
         db.session.rollback()
+        print(f"ERROR: {str(e)}")
+        print(f"Error type: {type(e)}")
         flash(f'Terjadi kesalahan: {str(e)}', 'danger')
         return redirect(url_for('main.form'))
 
 @main_bp.route('/payment_info', methods=['GET', 'POST'])
 @login_required
 def payment_info():
+    form = StudentForm.query.filter_by(user_id=current_user.id).first()
+    
+    if not form or form.status != "Menunggu Pembayaran":
+        flash('Anda tidak dalam status menunggu pembayaran.', 'warning')
+        return redirect(url_for('main.dashboard'))
+        
     if request.method == 'POST':
-        # Ambil file bukti pembayaran
+        sender_name = request.form.get('sender_name')
         payment_proof = request.files.get('payment_proof')
-
-        # Validasi file
-        if payment_proof and payment_proof.filename != '':
-            if '.' in payment_proof.filename and \
-               payment_proof.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS:
-                filename = secure_filename(payment_proof.filename)
-                payment_path = os.path.join(UPLOAD_FOLDER, 'payment_proofs', filename)
-                os.makedirs(os.path.dirname(payment_path), exist_ok=True)
-                payment_proof.save(payment_path)
-
-                # Simpan bukti pembayaran ke database
-                current_user_form = StudentForm.query.filter_by(user_id=current_user.id).first()
-                if current_user_form:
-                    current_user_form.payment_proof = filename
-                    current_user_form.payment_status = "Proof Uploaded"
-                    db.session.commit()
-
-                    flash('Bukti pembayaran berhasil diunggah!', 'success')
-                    return redirect(url_for('main.dashboard'))
-                else:
-                    flash('Formulir pendaftaran tidak ditemukan.', 'danger')
-                    return redirect(url_for('main.form'))
-            else:
-                flash('Format file tidak valid. Hanya menerima PNG, JPG, JPEG, atau GIF.', 'danger')
-                return redirect(url_for('main.payment_info'))
+        
+        if payment_proof and allowed_file(payment_proof.filename):
+            try:
+                filename = secure_filename(f"payment_{form.id}_{payment_proof.filename}")
+                filepath = os.path.join(UPLOAD_FOLDER, 'payments', filename)
+                
+                # Simpan bukti pembayaran
+                payment_proof.save(filepath)
+                
+                # Update status form
+                form.payment_proof = filename
+                form.payment_status = "Menunggu Verifikasi"
+                form.payment_sender = sender_name
+                
+                db.session.commit()
+                
+                flash('Bukti pembayaran berhasil diunggah dan menunggu verifikasi admin.', 'success')
+                return redirect(url_for('main.dashboard'))
+                
+            except Exception as e:
+                flash('Terjadi kesalahan saat upload bukti pembayaran.', 'danger')
+                print(f"Error: {str(e)}")
+                
         else:
-            flash('Harap unggah bukti pembayaran.', 'danger')
-            return redirect(url_for('main.payment_info'))
-
-    # Jika GET, tampilkan halaman pembayaran
-    return render_template('payment_info.html')
+            flash('File tidak valid. Gunakan format JPG, PNG, atau JPEG.', 'warning')
+            
+    return render_template('payment_info.html', form=form)
 
 @main_bp.route('/notifications')
 @login_required
 def notifications():
-    return render_template('notifications.html', notifications=current_user.notifications or [])
+    notifications = sorted(
+        current_user.notifications or [], 
+        key=lambda x: x.get('timestamp', ''), 
+        reverse=True
+    )
+    return render_template('notifications.html', notifications=notifications)
 
 @main_bp.route('/mark-notification-as-read', methods=['POST'])
 @login_required
 def mark_notification_as_read():
-    data = request.get_json()
-    notification_id = data.get('notification_id')
-    
-    if current_user.notifications:
-        for notification in current_user.notifications:
-            if notification.get('id') == notification_id:
-                notification['read'] = True
-                break
+    try:
+        data = request.get_json()
+        notification_id = data.get('notification_id')
         
-        db.session.commit()
-        return jsonify({'status': 'success'})
+        if current_user.notifications:
+            for notification in current_user.notifications:
+                if notification.get('id') == notification_id:
+                    notification['read'] = True
+                    break
+            
+            db.session.commit()
+            return jsonify({'status': 'success'})
+    except Exception as e:
+        print(f"Error marking notification as read: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
     
-    return jsonify({'status': 'error'}), 400
+    return jsonify({'status': 'error', 'message': 'Notification not found'}), 404
 
 @main_bp.route('/get-notifications')
 @login_required
@@ -186,6 +203,57 @@ def payment_page(form_id):
         return redirect(url_for('main.dashboard'))
         
     return render_template('payment.html', form=form)
+
+@main_bp.route('/upload_payment_proof', methods=['POST'])
+@login_required
+def upload_payment_proof():
+    try:
+        if 'payment_proof' not in request.files:
+            flash('Tidak ada file yang dipilih', 'error')
+            return redirect(url_for('main.payment_info'))
+
+        file = request.files['payment_proof']
+        if file.filename == '':
+            flash('Tidak ada file yang dipilih', 'error')
+            return redirect(url_for('main.payment_info'))
+
+        if file and allowed_file(file.filename):
+            # Create uploads directory if it doesn't exist
+            upload_dir = os.path.join('app', 'static', 'uploads', 'payments')
+            os.makedirs(upload_dir, exist_ok=True)
+
+            # Get student form
+            form = StudentForm.query.filter_by(user_id=current_user.id).first()
+            
+            # Generate secure filename
+            filename = secure_filename(f"payment_{form.id}_{file.filename}")
+            filepath = os.path.join(upload_dir, filename)
+            
+            # Save file
+            file.save(filepath)
+            
+            # Update form payment status
+            form.payment_proof = f"uploads/payments/{filename}"
+            form.payment_status = "Menunggu Verifikasi"
+            
+            db.session.commit()
+            
+            flash('Bukti pembayaran berhasil diupload. Mohon tunggu verifikasi admin.', 'success')
+            return redirect(url_for('main.dashboard'))
+            
+        else:
+            flash('Format file tidak diizinkan. Gunakan PNG, JPG, atau JPEG.', 'error')
+            return redirect(url_for('main.payment_info'))
+
+    except Exception as e:
+        print(f"Error in upload_payment_proof: {str(e)}")
+        flash('Terjadi kesalahan saat mengupload bukti pembayaran', 'error')
+        return redirect(url_for('main.payment_info'))
+
+def allowed_file(filename):
+    """Check if the file extension is allowed"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 

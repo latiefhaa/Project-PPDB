@@ -41,7 +41,32 @@ class StudentForm(db.Model):
     payment_status = db.Column(db.String(20), default='Belum Bayar')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    user = db.relationship('User', backref=db.backref('student_form', uselist=False))
+    # Basic relationships
+    user = db.relationship('User', backref='forms')
+    accepted_record = db.relationship('AcceptedStudent', backref='form', 
+                                    uselist=False, cascade='all, delete-orphan')
+    rejected_record = db.relationship('RejectedStudent', backref='form', 
+                                    uselist=False, cascade='all, delete-orphan')
+    # Add this relationship
+    spp_payments = db.relationship('PaymentSPP', backref='student', 
+                                 lazy='dynamic', cascade='all, delete-orphan')
+
+    @property
+    def is_payment_completed(self):
+        return self.payment_status == "Lunas" and self.status == "Diterima"
+
+    def update_payment_status(self):
+        if self.payment_status == "Lunas":
+            self.status = "Diterima"
+            db.session.add(
+                AcceptedStudent(
+                    student_form_id=self.id,
+                    full_name=self.full_name,
+                    birth_date=self.birth_date,
+                    father_name=self.father_name,
+                    previous_school=self.previous_school
+                )
+            )
 
 class AcceptedStudent(db.Model):
     __tablename__ = 'accepted_students'
@@ -49,19 +74,60 @@ class AcceptedStudent(db.Model):
     student_form_id = db.Column(db.Integer, db.ForeignKey('student_forms.id'), nullable=False)
     full_name = db.Column(db.String(150), nullable=False)
     birth_date = db.Column(db.Date, nullable=False)
-    parent_name = db.Column(db.String(150), nullable=False)
+    father_name = db.Column(db.String(150), nullable=False)
     previous_school = db.Column(db.String(150), nullable=False)
     acceptance_date = db.Column(db.DateTime, default=datetime.utcnow)
-    student_form = db.relationship('StudentForm', backref=db.backref('accepted_student', uselist=False))
-
+    
 class RejectedStudent(db.Model):
     __tablename__ = 'rejected_students'
     id = db.Column(db.Integer, primary_key=True)
     student_form_id = db.Column(db.Integer, db.ForeignKey('student_forms.id'), nullable=False)
     full_name = db.Column(db.String(150), nullable=False)
     birth_date = db.Column(db.Date, nullable=False)
-    parent_name = db.Column(db.String(150), nullable=False)
+    father_name = db.Column(db.String(150), nullable=False)
     previous_school = db.Column(db.String(150), nullable=False)
     rejection_date = db.Column(db.DateTime, default=datetime.utcnow)
     reason = db.Column(db.Text, nullable=True)
-    student_form = db.relationship('StudentForm', backref=db.backref('rejected_student', uselist=False))
+
+class PaymentSPP(db.Model):
+    __tablename__ = 'payment_spp'
+    id = db.Column(db.Integer, primary_key=True)
+    student_form_id = db.Column(db.Integer, db.ForeignKey('student_forms.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    month = db.Column(db.String(20), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    payment_date = db.Column(db.DateTime, default=datetime.utcnow)
+    payment_status = db.Column(db.String(20), default="Belum Bayar")
+    proof_of_payment = db.Column(db.String(255))
+    verified = db.Column(db.Boolean, default=False)
+    verification_date = db.Column(db.DateTime, nullable=True)
+
+    def verify_payment(self):
+        try:
+            self.verified = True
+            self.payment_status = "Lunas"
+            self.verification_date = datetime.utcnow()
+            
+            # Get associated student form
+            student_form = StudentForm.query.get(self.student_form_id)
+            if student_form:
+                student_form.payment_status = "Lunas"
+                student_form.status = "Diterima"
+                
+                # Create AcceptedStudent record if not exists
+                if not student_form.accepted_record:
+                    accepted = AcceptedStudent(
+                        student_form_id=student_form.id,
+                        full_name=student_form.full_name,
+                        birth_date=student_form.birth_date,
+                        father_name=student_form.father_name,
+                        previous_school=student_form.previous_school
+                    )
+                    db.session.add(accepted)
+            
+            db.session.commit()
+            return True
+        except Exception as e:
+            print(f"Error verifying payment: {str(e)}")
+            db.session.rollback()
+            return False

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelola SPP - PPDB Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="bg-blue-500 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <a href="/" class="text-2xl font-bold text-white">PPDB Online</a>
+                <div class="hidden md:flex space-x-6">
+                    <a href="{{ url_for('admin_bp.dashboard_admin') }}" class="text-white hover:text-gray-200">Dashboard</a>
+                    <a href="{{ url_for('admin_bp.form_admin') }}" class="text-white hover:text-gray-200">Formulir</a>
+                    <a href="/logout" class="text-white hover:text-gray-200">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="flex-grow container mx-auto px-4 py-8">
+        <div class="bg-white rounded-xl shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Pembayaran SPP - {{ student.full_name }}</h2>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="py-3 px-4 text-left">Bulan</th>
+                            <th class="py-3 px-4 text-left">Tahun</th>
+                            <th class="py-3 px-4 text-left">Jumlah</th>
+                            <th class="py-3 px-4 text-left">Status</th>
+                            <th class="py-3 px-4 text-left">Bukti</th>
+                            <th class="py-3 px-4 text-left">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr class="border-b">
+                            <td class="py-3 px-4">{{ payment.month }}</td>
+                            <td class="py-3 px-4">{{ payment.year }}</td>
+                            <td class="py-3 px-4">Rp {{ "{:,.0f}".format(payment.amount) }}</td>
+                            <td class="py-3 px-4">
+                                {% if payment.payment_status == "Lunas" %}
+                                    <span class="text-green-600 font-semibold">{{ payment.payment_status }}</span>
+                                {% else %}
+                                    <span class="text-red-600 font-semibold">{{ payment.payment_status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4">
+                                {% if payment.proof_of_payment %}
+                                    <a href="{{ url_for('static', filename=payment.proof_of_payment) }}" 
+                                       target="_blank"
+                                       class="text-blue-500 hover:underline">
+                                        Lihat Bukti
+                                    </a>
+                                {% else %}
+                                    <span class="text-gray-400">Belum ada bukti</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4">
+                                {% if payment.payment_status == "Belum Bayar" and payment.proof_of_payment %}
+                                    <form action="{{ url_for('admin_bp.verify_spp', payment_id=payment.id) }}" 
+                                          method="POST"
+                                          class="inline">
+                                        <button type="submit" 
+                                                onclick="return confirm('Verifikasi pembayaran SPP ini?');"
+                                                class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600">
+                                            Verifikasi
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div> 
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-blue-100 py-4 mt-auto">
+        <div class="max-w-7xl mx-auto text-center">
+            <p class="text-gray-600">&copy; 2025 PPDB Online. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -42,29 +42,60 @@
     <div id="toast-container" class="fixed top-4 right-4 z-50"></div>
 
     <!-- Status Section -->
-    {% if current_user.has_submitted_form %}
-    <div class="bg-white shadow-md p-4 mb-6">
-        <div class="max-w-4xl mx-auto">
-            {% set form = current_user.student_form %}
+    <div class="flex-grow container mx-auto px-4 py-8">
+        {% if current_user.has_submitted_form %}
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Status Pendaftaran</h2>
+            
+            <!-- Status dan Tombol Pembayaran -->
             {% if form %}
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-xl font-semibold text-gray-800">Status Pendaftaran:</h2>
-                        <p class="mt-2">
-                            {% if form.status == "Menunggu" %}
-                                <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full">Menunggu</span>
-                            {% elif form.status == "Diterima" %}
-                                <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full">Diterima</span>
-                            {% elif form.status == "Ditolak" %}
-                                <span class="bg-red-100 text-red-800 px-3 py-1 rounded-full">Ditolak</span>
-                            {% endif %}
-                        </p>
+                <div class="space-y-6">
+                    <!-- Status Badge -->
+                    <div class="flex items-center gap-4">
+                        <span class="font-semibold">Status:</span>
+                        {% if form.status == "Menunggu" %}
+                            <span class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full">
+                                Sedang Diverifikasi
+                            </span>
+                        {% elif form.status == "Menunggu Pembayaran" %}
+                            <span class="bg-green-100 text-green-800 px-4 py-2 rounded-full">
+                                Diterima
+                            </span>
+                            
+                            <!-- Large Payment Button -->
+                            <div class="mt-6 text-center">
+                                <a href="{{ url_for('main.payment_info') }}" 
+                                   class="inline-flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white text-lg font-semibold px-8 py-3 rounded-lg shadow-lg transform transition-all hover:-translate-y-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Lakukan Pembayaran Sekarang
+                                </a>
+                                <p class="text-sm text-gray-600 mt-2">
+                                    Silakan lakukan pembayaran dalam waktu 3x24 jam
+                                </p>
+                            </div>
+
+                            <!-- Payment Info Card -->
+                            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mt-4 rounded-r-lg">
+                                <h3 class="font-semibold text-blue-800">Informasi Pembayaran:</h3>
+                                <ul class="mt-2 space-y-1 text-blue-700">
+                                    <li>• Biaya Pendaftaran: Rp. 500.000</li>
+                                    <li>• Batas Waktu: 3x24 jam</li>
+                                    <li>• Status: {{ form.payment_status }}</li>
+                                </ul>
+                            </div>
+                        {% elif form.status == "Ditolak" %}
+                            <span class="bg-red-100 text-red-800 px-4 py-2 rounded-full">
+                                Ditolak
+                            </span>
+                        {% endif %}
                     </div>
                 </div>
             {% endif %}
         </div>
+        {% endif %}
     </div>
-    {% endif %}
 
     <!-- Notifications Section -->
     {% if current_user.notifications %}
@@ -109,47 +140,31 @@
         </div>
     </footer>
 
+    <!-- Remove or comment out the notification JavaScript -->
+    <!--
     <script>
-        // Show toast notification
-        function showToast(message, type = 'info') {
-            const toastContainer = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            
-            // Set border color based on notification type
-            const borderColor = {
-                'acceptance': 'border-green-500',
-                'payment': 'border-blue-500',
-                'rejection': 'border-red-500'
-            }[type] || 'border-gray-500';
-            
-            toast.className = `toast bg-white rounded-lg shadow-lg p-4 mb-4 border-l-4 w-96 ${borderColor}`;
-            
-            toast.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-gray-800">${message}</p>
-                        <p class="text-sm text-gray-500 mt-2">${new Date().toLocaleString()}</p>
-                    </div>
-                    <button onclick="dismissToast(this)" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-                        </svg>
-                    </button>
-                </div>
-            `;
-
-            toastContainer.appendChild(toast);
-            setTimeout(() => dismissToast(toast.querySelector('button')), 7000); // Tampil lebih lama (7 detik)
+        function showToast(message, type) {
+            // ...existing toast code...
         }
-
-        // Show notifications when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            {% if current_user.notifications %}
-                {% for notification in current_user.notifications|sort(attribute='timestamp', reverse=true) if not notification.read %}
-                    showToast(`{{ notification.message }}`, `{{ notification.type }}`);
-                {% endfor %}
-            {% endif %}
-        });
     </script>
+    -->
+
+    <!-- Add a simple status message instead -->
+    {% if form and form.status == "Menunggu Pembayaran" %}
+        <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-green-700">
+                        Selamat! Anda telah diterima. Silakan lakukan pembayaran dalam waktu 3x24 jam.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 </body>
 </html>

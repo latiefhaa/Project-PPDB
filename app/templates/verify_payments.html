@@ -1,0 +1,38 @@
+<div class="overflow-x-auto">
+    <table class="min-w-full">
+        <thead>
+            <tr>
+                <th>Nama Siswa</th>
+                <th>Pengirim</th>
+                <th>Bukti Bayar</th>
+                <th>Tanggal Upload</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payment in pending_payments %}
+            <tr>
+                <td>{{ payment.full_name }}</td>
+                <td>{{ payment.payment_sender }}</td>
+                <td>
+                    <a href="{{ url_for('static', filename='uploads/payments/' + payment.payment_proof) }}" 
+                       target="_blank">
+                        Lihat Bukti
+                    </a>
+                </td>
+                <td>{{ payment.payment_date }}</td>
+                <td>
+                    <button onclick="verifyPayment({{ payment.id }})"
+                            class="bg-green-500 text-white px-4 py-2 rounded">
+                        Verifikasi
+                    </button>
+                    <button onclick="rejectPayment({{ payment.id }})"
+                            class="bg-red-500 text-white px-4 py-2 rounded">
+                        Tolak
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

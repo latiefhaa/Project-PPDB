@@ -57,15 +57,15 @@
                         <tr class="border-b hover:bg-gray-50">
                             <td class="py-3 px-4">{{ form.full_name }}</td>
                             <td class="py-3 px-4">{{ form.payment_status }}</td>
-                            <td class="py-3 px-4">
+                            <td class="px-6 py-4">
                                 {% if form.payment_proof %}
-                                <a href="{{ url_for('static', filename='uploads/' + form.payment_proof) }}" 
-                                   target="_blank" 
-                                   class="text-blue-600 hover:underline">
-                                    Lihat Bukti
-                                </a>
+                                    <a href="{{ url_for('static', filename=form.payment_proof) }}" 
+                                       target="_blank"
+                                       class="text-blue-600 hover:text-blue-800 underline">
+                                        Lihat Bukti Pembayaran
+                                    </a>
                                 {% else %}
-                                <span class="text-red-500">Belum Upload</span>
+                                    <span class="text-red-500">Belum ada bukti pembayaran</span>
                                 {% endif %}
                             </td>
                             <td class="py-3 px-4">

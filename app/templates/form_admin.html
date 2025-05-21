@@ -44,21 +44,27 @@
                         <td class="py-3 px-4 border border-gray-300">{{ form.full_name }}</td>
                         <td class="py-3 px-4 border border-gray-300">{{ form.previous_school }}</td>
                         <td class="py-3 px-4 border border-gray-300">{{ form.status }}</td>
-                        <td class="py-3 px-4 border border-gray-300 space-x-2">
+                        <td class="py-3 px-4 border border-gray-300">
                             <a href="{{ url_for('admin_bp.form_detail', form_id=form.id) }}" 
-                               class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">
+                               class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 mr-2">
                                 Detail
                             </a>
-                            <form action="{{ url_for('admin_bp.accept_form', form_id=form.id) }}" method="POST" class="inline">
+                            
+                            {% if form.status == "Menunggu" %}
+                            <form action="{{ url_for('admin_bp.accept_form', form_id=form.id) }}" 
+                                  method="POST" 
+                                  class="inline-block mr-2">
                                 <button type="submit" 
                                         class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600">
                                     Terima
                                 </button>
                             </form>
+
                             <button onclick="showRejectModal({{ form.id }})"
                                     class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">
                                 Tolak
                             </button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
