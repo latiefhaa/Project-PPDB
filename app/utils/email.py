@@ -9,69 +9,76 @@ import time
 
 def send_email(to_email, subject, html_content):
     try:
-        print(f"\n=== Sending email to: {to_email} ===")
-        print("Attempting primary method (Flask-Mail)...")
+        print("\n=== Email Sending Diagnostic ===")
+        print(f"To: {to_email}")
+        print(f"From: {current_app.config['MAIL_USERNAME']}")
+        print(f"SMTP Server: {current_app.config['MAIL_SERVER']}")
+        print(f"Port: {current_app.config['MAIL_PORT']}")
+        print(f"TLS: {current_app.config['MAIL_USE_TLS']}")
         
-        # Method 1: Flask-Mail
         msg = Message(
             subject,
-            sender=('PPDB Online', current_app.config['MAIL_USERNAME']),  # Explicit sender
-            recipients=[to_email]
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
+            recipients=[to_email],
+            html=html_content
         )
-        msg.html = html_content
         
-        # Add headers untuk menghindari spam filter
+        # Add Gmail-specific headers
         msg.extra_headers = {
             'X-Priority': '1',
             'X-MSMail-Priority': 'High',
             'Importance': 'High',
-            'X-Mailer': 'PPDB Online System'
+            'X-Mailer': 'PPDB Online System',
+            'Precedence': 'Bulk',
+            'Reply-To': current_app.config['MAIL_USERNAME'],
+            'Organization': 'PPDB Online'
         }
         
-        # Retry mechanism
-        max_retries = 3
-        retry_delay = 2  # seconds
-        
-        for attempt in range(max_retries):
+        try:
+            print("\nTrying to send via Flask-Mail...")
+            mail.send(msg)
+            print("Email sent successfully via Flask-Mail!")
+            return True, "Email sent successfully"
+            
+        except Exception as flask_error:
+            print(f"\nFlask-Mail Error: {str(flask_error)}")
+            print("Trying direct SMTP...")
+            
             try:
-                mail.send(msg)
-                print(f"Email successfully sent to {to_email}!")
-                return True, "Email sent successfully"
-            except Exception as retry_error:
-                print(f"Attempt {attempt + 1} failed: {str(retry_error)}")
-                if attempt < max_retries - 1:
-                    print(f"Retrying in {retry_delay} seconds...")
-                    time.sleep(retry_delay)
-                    continue
-                
-                # If Flask-Mail fails, try direct SMTP
-                print("\nTrying direct SMTP method...")
-                try:
-                    smtp = smtplib.SMTP(current_app.config['MAIL_SERVER'], 
-                                      current_app.config['MAIL_PORT'])
-                    smtp.starttls()
-                    smtp.login(current_app.config['MAIL_USERNAME'],
-                             current_app.config['MAIL_PASSWORD'])
+                with smtplib.SMTP(current_app.config['MAIL_SERVER'], 587) as server:
+                    server.set_debuglevel(1)  # Enable debug output
+                    server.ehlo()
+                    server.starttls()
+                    server.ehlo()
+                    
+                    print("\nAttempting SMTP login...")
+                    server.login(
+                        current_app.config['MAIL_USERNAME'],
+                        current_app.config['MAIL_PASSWORD']
+                    )
+                    print("SMTP login successful!")
                     
                     message = MIMEMultipart('alternative')
                     message['Subject'] = subject
-                    message['From'] = current_app.config['MAIL_USERNAME']
+                    message['From'] = f"PPDB Online <{current_app.config['MAIL_USERNAME']}>"
                     message['To'] = to_email
                     message.attach(MIMEText(html_content, 'html'))
                     
-                    smtp.send_message(message)
-                    smtp.quit()
+                    print(f"\nSending email to {to_email}...")
+                    server.sendmail(
+                        current_app.config['MAIL_USERNAME'],
+                        to_email,
+                        message.as_string()
+                    )
                     print("Email sent successfully via direct SMTP!")
                     return True, "Email sent via SMTP"
                     
-                except Exception as smtp_error:
-                    error_msg = f"Both email methods failed: {str(smtp_error)}"
-                    print(error_msg)
-                    return False, error_msg
-
+            except Exception as smtp_error:
+                print(f"\nSMTP Error: {str(smtp_error)}")
+                print(f"Full traceback:\n{traceback.format_exc()}")
+                return False, f"SMTP failed: {str(smtp_error)}"
+                
     except Exception as e:
-        error_trace = traceback.format_exc()
-        print(f"\nFatal error in send_email:")
-        print(f"Error: {str(e)}")
-        print(f"Traceback:\n{error_trace}")
+        print(f"\nFatal Error: {str(e)}")
+        print(f"Full traceback:\n{traceback.format_exc()}")
         return False, str(e)

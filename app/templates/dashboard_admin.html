@@ -106,31 +106,6 @@
                 </div>
             </div>
 
-            <!-- Kelola SPP -->
-            <div class="bg-white p-6 rounded-xl shadow-md">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4 px-2">Kelola SPP Siswa</h2>
-                <div class="grid grid-cols-1 gap-4">
-                    {% if students %}
-                        {% for student in students %}
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <p class="font-semibold">{{ student.full_name }}</p>
-                            <a href="{{ url_for('admin_bp.spp_payments', student_id=student.id) }}" 
-                               class="inline-block mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                                Kelola SPP
-                            </a>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <p class="text-gray-600">Belum ada siswa yang diterima</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Add this in your navigation or menu section -->
-            <a href="{{ url_for('admin_bp.pending_payments') }}" 
-               class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-                Verifikasi Pembayaran
-            </a>
 
             <!-- Add this section after your existing dashboard content -->
             <div class="bg-white p-6 rounded-xl shadow-md mb-6">

@@ -22,18 +22,22 @@ def create_app(config_class=None):
     app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static/uploads')
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
-    # Email configuration
-    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-    app.config['MAIL_PORT'] = 587
-    app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USERNAME'] = 'ilhameskepal@gmail.com'
-    app.config['MAIL_PASSWORD'] = 'sgulignazazrtoti'  # tanpa spasi
-    app.config['MAIL_DEFAULT_SENDER'] = ('PPDB Online', 'ilhameskepal@gmail.com')
-    app.config['MAIL_USE_SSL'] = False
-    app.config['MAIL_MAX_EMAILS'] = 50
-    app.config['MAIL_ASCII_ATTACHMENTS'] = False
-    app.config['MAIL_SUPPRESS_SEND'] = False
-    app.config['MAIL_DEBUG'] = True
+    # Email configuration with better security settings
+    app.config.update(
+        MAIL_SERVER='smtp.gmail.com',
+        MAIL_PORT=465,  # Change to 465 for SSL
+        MAIL_USE_TLS=False,  # Disable TLS
+        MAIL_USE_SSL=True,   # Enable SSL
+        MAIL_USERNAME='ilhameskepal@gmail.com',
+        MAIL_PASSWORD='sgulignazazrtoti',  # Your App Password
+        MAIL_DEFAULT_SENDER=('PPDB Online', 'ilhameskepal@gmail.com'),
+        MAIL_MAX_EMAILS=50,
+        MAIL_ASCII_ATTACHMENTS=False,
+        MAIL_DEBUG=True,
+        MAIL_SUPPRESS_SEND=False,
+        MAIL_USE_CREDENTIALS=True,
+        MAIL_TIMEOUT=30
+    )
 
     # Buat folder upload jika belum ada
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
