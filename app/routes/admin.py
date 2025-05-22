@@ -1,13 +1,13 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file, current_app
 from flask_login import login_required, current_user
 from app.models import db, User, StudentForm, AcceptedStudent, RejectedStudent, PaymentSPP
 from datetime import datetime
 from flask_mail import Message
-from app import mail  # Add this import
+from app import mail
 from flask_wtf.csrf import generate_csrf
 import pandas as pd
 import io
-from app.utils.email import send_email  # Add this import
+from app.utils.email import send_email
 
 # Inisialisasi Blueprint untuk admin
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/admin')
@@ -717,7 +717,6 @@ def send_payment_confirmation(form_id):
     user = User.query.get(form.user_id)
     
     try:
-        # Prepare email content
         html_content = f"""
         <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #1a56db;">Konfirmasi Pembayaran - {form.full_name}</h2>
@@ -753,17 +752,10 @@ def send_payment_confirmation(form_id):
         </div>
         """
         
-        try:
-            # Send email using Flask-Mail
-            msg = Message(
-                'Konfirmasi Pembayaran - PPDB Online',
-                sender=('PPDB Online', 'noreply@ppdbonline.com'),  # Add sender
-                recipients=[user.email]
-            )
-            msg.html = html_content
-            mail.send(msg)
-            
-            # Update notification only if email sent successfully
+        success, message = send_email(user.email, 'Konfirmasi Pembayaran - PPDB Online', html_content)
+        
+        if success:
+            # Update notification
             if not user.notifications:
                 user.notifications = []
                 
@@ -777,27 +769,11 @@ def send_payment_confirmation(form_id):
             
             db.session.commit()
             flash(f'Email konfirmasi berhasil dikirim ke {form.full_name}', 'success')
+        else:
+            raise Exception(f"Failed to send email: {message}")
             
-        except Exception as mail_error:
-            print(f"Detailed mail error: {str(mail_error)}")
-            # Try alternate email sending method
-            try:
-                success, message = send_email(
-                    user.email,
-                    'Konfirmasi Pembayaran - PPDB Online',
-                    html_content
-                )
-                if success:
-                    flash(f'Email konfirmasi berhasil dikirim ke {form.full_name}', 'success')
-                else:
-                    raise Exception(message)
-            except Exception as alt_error:
-                print(f"Alternative mail method failed: {str(alt_error)}")
-                raise Exception("Gagal mengirim email melalui kedua metode")
-        
     except Exception as e:
-        db.session.rollback()
-        print(f"Error sending payment confirmation: {str(e)}")
-        flash(f'Gagal mengirim email konfirmasi: {str(e)}', 'error')
+        print(f"Error in send_payment_confirmation: {str(e)}")
+        flash('Gagal mengirim email konfirmasi pembayaran', 'error')
     
     return redirect(url_for('admin_bp.payment_completed_emails'))

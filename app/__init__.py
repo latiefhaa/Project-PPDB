@@ -6,7 +6,7 @@ from flask_migrate import Migrate
 from datetime import datetime
 from flask_mail import Mail
 
-# Inisialisasi ekstensi
+# Initialize extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
@@ -26,8 +26,14 @@ def create_app(config_class=None):
     app.config['MAIL_SERVER'] = 'smtp.gmail.com'
     app.config['MAIL_PORT'] = 587
     app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USERNAME'] = 'your-email@gmail.com'  # Change this
-    app.config['MAIL_PASSWORD'] = 'your-app-password'     # Change this
+    app.config['MAIL_USERNAME'] = 'ilhameskepal@gmail.com'
+    app.config['MAIL_PASSWORD'] = 'sgulignazazrtoti'  # tanpa spasi
+    app.config['MAIL_DEFAULT_SENDER'] = ('PPDB Online', 'ilhameskepal@gmail.com')
+    app.config['MAIL_USE_SSL'] = False
+    app.config['MAIL_MAX_EMAILS'] = 50
+    app.config['MAIL_ASCII_ATTACHMENTS'] = False
+    app.config['MAIL_SUPPRESS_SEND'] = False
+    app.config['MAIL_DEBUG'] = True
 
     # Buat folder upload jika belum ada
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -42,13 +48,16 @@ def create_app(config_class=None):
                 return value
         return value.strftime("%d %B %Y %H:%M")
 
-    # Inisialisasi ekstensi
+    # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
     login_manager.login_view = 'auth_bp.login'
     mail.init_app(app)
 
+    # Store app reference for utils
+    app.app_context().push()
+    
     # Register blueprints and init database
     with app.app_context():
         @login_manager.user_loader
