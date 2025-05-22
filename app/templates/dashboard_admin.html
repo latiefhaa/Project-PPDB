@@ -162,7 +162,7 @@
                 </div>
 
                 <!-- Quick Stats -->
-                <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h3 class="font-semibold text-gray-600">Total Pendaftar</h3>
                         <p class="text-2xl font-bold text-gray-800">{{ stats.total.registrations }}</p>
@@ -178,6 +178,36 @@
                     <div class="bg-green-50 p-4 rounded-lg">
                         <h3 class="font-semibold text-green-600">Pembayaran Lunas</h3>
                         <p class="text-2xl font-bold text-green-800">{{ stats.payment.completed }}</p>
+                    </div>
+                    <div class="bg-teal-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-teal-600">Email Terkirim</h3>
+                        <p class="text-2xl font-bold text-teal-800">{{ stats.email.sent }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Komunikasi -->
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 px-2">Komunikasi</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Email Penerimaan - Update href ke payment_completed_emails -->
+                    <a href="{{ url_for('admin_bp.payment_completed_emails') }}" 
+                       class="bg-teal-500 hover:bg-teal-600 text-white p-6 rounded-xl shadow-lg transform transition-all duration-200 hover:-translate-y-1">
+                        <div class="text-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <span class="block text-xl font-semibold mb-2">Kirim Email Konfirmasi</span>
+                            <span class="text-sm opacity-90">Kirim email ke siswa yang sudah bayar</span>
+                        </div>
+                    </a>
+                    
+                    <!-- Stats Email -->
+                    <div class="bg-cyan-500 text-white p-6 rounded-xl shadow-lg">
+                        <div class="text-center">
+                            <span class="block text-xl font-semibold mb-2">Total Email Terkirim</span>
+                            <span class="text-3xl font-bold">{{ stats.email.sent }}</span>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -112,44 +112,19 @@ def submit_form():
         flash(f'Terjadi kesalahan: {str(e)}', 'danger')
         return redirect(url_for('main.form'))
 
-@main_bp.route('/payment_info', methods=['GET', 'POST'])
+@main_bp.route('/payment_info')
 @login_required
 def payment_info():
     form = StudentForm.query.filter_by(user_id=current_user.id).first()
     
-    if not form or form.status != "Menunggu Pembayaran":
-        flash('Anda tidak dalam status menunggu pembayaran.', 'warning')
+    if not form:
+        flash('Formulir tidak ditemukan.', 'error')
         return redirect(url_for('main.dashboard'))
         
-    if request.method == 'POST':
-        sender_name = request.form.get('sender_name')
-        payment_proof = request.files.get('payment_proof')
+    if form.status not in ["Menunggu Pembayaran", "Diterima"]:
+        flash('Anda tidak memiliki tagihan pembayaran yang aktif.', 'info')
+        return redirect(url_for('main.dashboard'))
         
-        if payment_proof and allowed_file(payment_proof.filename):
-            try:
-                filename = secure_filename(f"payment_{form.id}_{payment_proof.filename}")
-                filepath = os.path.join(UPLOAD_FOLDER, 'payments', filename)
-                
-                # Simpan bukti pembayaran
-                payment_proof.save(filepath)
-                
-                # Update status form
-                form.payment_proof = filename
-                form.payment_status = "Menunggu Verifikasi"
-                form.payment_sender = sender_name
-                
-                db.session.commit()
-                
-                flash('Bukti pembayaran berhasil diunggah dan menunggu verifikasi admin.', 'success')
-                return redirect(url_for('main.dashboard'))
-                
-            except Exception as e:
-                flash('Terjadi kesalahan saat upload bukti pembayaran.', 'danger')
-                print(f"Error: {str(e)}")
-                
-        else:
-            flash('File tidak valid. Gunakan format JPG, PNG, atau JPEG.', 'warning')
-            
     return render_template('payment_info.html', form=form)
 
 @main_bp.route('/notifications')

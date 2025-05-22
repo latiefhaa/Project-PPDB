@@ -7,6 +7,7 @@ from app import mail  # Add this import
 from flask_wtf.csrf import generate_csrf
 import pandas as pd
 import io
+from app.utils.email import send_email  # Add this import
 
 # Inisialisasi Blueprint untuk admin
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/admin')
@@ -40,6 +41,9 @@ def dashboard_admin():
             'completed': StudentForm.query.filter_by(payment_status="Lunas").count(),
             'pending': StudentForm.query.filter_by(payment_status="Menunggu Verifikasi").count(),
             'not_paid': StudentForm.query.filter_by(payment_status="Belum Bayar").count()
+        },
+        'email': {
+            'sent': 0  # We'll update this once email tracking is implemented
         }
     }
     
@@ -66,23 +70,21 @@ def form_detail(form_id):
 @login_required
 @admin_required
 def accept_form(form_id):
-    print("\n=== ACCEPTING FORM ===")
     try:
         # Get form
         form = StudentForm.query.get_or_404(form_id)
-        print(f"Found form for: {form.full_name}")
 
         # Update status
         form.status = "Menunggu Pembayaran"
         form.payment_status = "Belum Bayar"
-        print("Updated form status")
 
         # Add notification for user
         user = User.query.get(form.user_id)
         if not user.notifications:
             user.notifications = []
             
-        payment_url = url_for('main.payment_info', _external=True)
+        # Update notification with correct URL and action
+        payment_url = url_for('main.payment_info', _external=True)  # Make sure this route exists
         notification = {
             'id': len(user.notifications) + 1,
             'type': 'acceptance',
@@ -90,12 +92,11 @@ def accept_form(form_id):
             'timestamp': datetime.utcnow().isoformat(),
             'read': False,
             'has_action': True,
-            'action_url': payment_url,
+            'action_url': payment_url,  # Make sure this points to payment page
             'action_text': 'Bayar Sekarang',
             'is_important': True
         }
         user.notifications.append(notification)
-        print("Added notification")
 
         # Send email notification
         try:
@@ -115,19 +116,16 @@ def accept_form(form_id):
             <p>Terima kasih,<br>Tim PPDB Online</p>
             """
             mail.send(msg)
-            print("Email notification sent")
         except Exception as mail_error:
             print(f"Failed to send email: {str(mail_error)}")
 
         # Save changes
         db.session.commit()
-        print("Changes saved to database")
         
         flash('Siswa berhasil diterima dan pemberitahuan telah dikirim', 'success')
         return redirect(url_for('admin_bp.form_admin'))
 
     except Exception as e:
-        print(f"ERROR: {str(e)}")
         db.session.rollback()
         flash('Gagal memproses penerimaan siswa', 'error')
         return redirect(url_for('admin_bp.form_admin'))
@@ -285,42 +283,71 @@ def verify_payment(form_id):
         form.payment_status = "Lunas"
         form.status = "Diterima"
         
-        # Kirim notifikasi
+        # Get user
+        user = User.query.get(form.user_id)
+        
+        # Add notification
+        if not user.notifications:
+            user.notifications = []
+            
         notification = {
             'type': 'payment_verified',
             'message': 'Pembayaran Anda telah diverifikasi. Selamat bergabung!',
             'timestamp': datetime.utcnow().isoformat(),
             'read': False
         }
-        
-        user = User.query.get(form.user_id)
-        if not user.notifications:
-            user.notifications = []
         user.notifications.append(notification)
         
-        # Kirim email
-        try:
-            msg = Message(
-                'Pembayaran Berhasil Diverifikasi',
-                sender='your-email@gmail.com',
-                recipients=[user.email]
-            )
-            msg.html = f"""
-                <h2>Selamat {form.full_name}!</h2>
-                <p>Pembayaran Anda telah diverifikasi.</p>
-                <p>Selamat bergabung di sekolah kami!</p>
-                <br>
-                <p>Salam,<br>Tim PPDB Online</p>
-            """
-            mail.send(msg)
-        except Exception as mail_error:
-            print(f"Failed to send email: {str(mail_error)}")
+        # Send email notification using SMTP
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1a56db;">Selamat {form.full_name}!</h2>
+            <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="color: #1f2937; font-size: 16px;">
+                    Pembayaran Anda telah berhasil diverifikasi. Anda resmi diterima di sekolah kami!
+                </p>
+                <h3 style="color: #1f2937;">Informasi Penting:</h3>
+                <ul style="color: #4b5563;">
+                    <li>Nomor Pendaftaran: {form.id}</li>
+                    <li>Status: Diterima</li>
+                    <li>Pembayaran: Lunas</li>
+                </ul>
+            </div>
+            
+            <div style="background-color: #e5edff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #1e40af;">Langkah Selanjutnya:</h3>
+                <ol style="color: #1e40af;">
+                    <li>Simpan email ini sebagai bukti pembayaran</li>
+                    <li>Tunggu informasi lebih lanjut mengenai jadwal orientasi</li>
+                    <li>Persiapkan dokumen-dokumen yang diperlukan</li>
+                </ol>
+            </div>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                <p style="color: #4b5563; font-size: 14px;">
+                    Terima kasih atas kepercayaan Anda.<br>
+                    Tim PPDB Online
+                </p>
+            </div>
+        </div>
+        """
         
+        success, message = send_email(
+            user.email,
+            'Pembayaran Diterima - PPDB Online',
+            html_content
+        )
+        
+        if not success:
+            print(f"Failed to send email: {message}")
+            
+        # Commit changes to database
         db.session.commit()
-        flash('Pembayaran berhasil diverifikasi', 'success')
+        flash('Pembayaran berhasil diverifikasi dan email notifikasi telah dikirim', 'success')
         
     except Exception as e:
         db.session.rollback()
+        print(f"Error in verify_payment: {str(e)}")
         flash(f'Terjadi kesalahan: {str(e)}', 'error')
         
     return redirect(url_for('admin_bp.pending_payments'))  # Fixed endpoint reference
@@ -609,3 +636,168 @@ def registration_statistics():
         print(f"Error generating statistics: {str(e)}")
         flash('Gagal memuat statistik', 'error')
         return redirect(url_for('admin_bp.dashboard_admin'))
+
+@admin_bp.route('/send_acceptance_email/<int:form_id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def send_acceptance_email(form_id):
+    form = StudentForm.query.get_or_404(form_id)
+    user = User.query.get(form.user_id)
+    
+    if request.method == 'POST':
+        try:
+            # Get custom message from form
+            custom_message = request.form.get('custom_message', '')
+            
+            msg = Message(
+                'Informasi Penerimaan Siswa - PPDB Online',
+                recipients=[user.email]
+            )
+            
+            msg.html = f"""
+            <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #1a56db;">Selamat {form.full_name}!</h2>
+                
+                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p style="color: #1f2937; font-size: 16px;">
+                        Kami dengan senang hati memberitahukan bahwa Anda telah resmi diterima sebagai siswa baru.
+                        Status pembayaran Anda telah dikonfirmasi LUNAS.
+                    </p>
+                    
+                    <h3 style="color: #1f2937;">Detail Siswa:</h3>
+                    <ul style="color: #4b5563;">
+                        <li>Nomor Pendaftaran: {form.id}</li>
+                        <li>Nama: {form.full_name}</li>
+                        <li>Status: Diterima</li>
+                        <li>Pembayaran: Lunas</li>
+                    </ul>
+                </div>
+                
+                <div style="background-color: #e5edff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="color: #1e40af;">Pesan dari Admin:</h3>
+                    <p style="color: #1e40af;">{custom_message}</p>
+                </div>
+                
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #4b5563; font-size: 14px;">
+                        Terima kasih atas kepercayaan Anda.<br>
+                        Tim PPDB Online
+                    </p>
+                </div>
+            </div>
+            """
+            
+            mail.send(msg)
+            flash('Email berhasil dikirim ke siswa', 'success')
+            
+        except Exception as e:
+            print(f"Error sending email: {str(e)}")
+            flash('Gagal mengirim email', 'error')
+            
+        return redirect(url_for('admin_bp.accepted_forms'))
+        
+    return render_template('send_email.html', student=form)
+
+@admin_bp.route('/payment_completed_emails')
+@login_required
+@admin_required
+def payment_completed_emails():
+    # Get students who have completed payments
+    paid_students = StudentForm.query.filter_by(
+        status="Diterima",
+        payment_status="Lunas"
+    ).all()
+    return render_template('payment_completed_emails.html', students=paid_students)
+
+@admin_bp.route('/send_payment_confirmation/<int:form_id>', methods=['POST'])
+@login_required
+@admin_required
+def send_payment_confirmation(form_id):
+    form = StudentForm.query.get_or_404(form_id)
+    user = User.query.get(form.user_id)
+    
+    try:
+        # Prepare email content
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1a56db;">Konfirmasi Pembayaran - {form.full_name}</h2>
+            
+            <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="color: #1f2937; font-size: 16px;">
+                    Pembayaran Anda telah kami terima dan verifikasi. 
+                    Selamat! Anda telah resmi terdaftar sebagai siswa baru.
+                </p>
+                
+                <h3 style="color: #1f2937;">Detail Pembayaran:</h3>
+                <ul style="color: #4b5563;">
+                    <li>Nomor Pendaftaran: {form.id}</li>
+                    <li>Nama Lengkap: {form.full_name}</li>
+                    <li>Status: Diterima</li>
+                    <li>Pembayaran: Lunas</li>
+                </ul>
+            </div>
+            
+            <div style="background-color: #e5edff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #1e40af;">Langkah Selanjutnya:</h3>
+                <ol style="color: #1e40af;">
+                    <li>Simpan email ini sebagai bukti pembayaran</li>
+                    <li>Tunggu informasi selanjutnya mengenai jadwal orientasi</li>
+                    <li>Persiapkan dokumen-dokumen yang diperlukan</li>
+                </ol>
+            </div>
+            
+            <p style="color: #4b5563; font-size: 14px; margin-top: 20px;">
+                Terima kasih atas kepercayaan Anda.<br>
+                Tim PPDB Online
+            </p>
+        </div>
+        """
+        
+        try:
+            # Send email using Flask-Mail
+            msg = Message(
+                'Konfirmasi Pembayaran - PPDB Online',
+                sender=('PPDB Online', 'noreply@ppdbonline.com'),  # Add sender
+                recipients=[user.email]
+            )
+            msg.html = html_content
+            mail.send(msg)
+            
+            # Update notification only if email sent successfully
+            if not user.notifications:
+                user.notifications = []
+                
+            notification = {
+                'type': 'payment_confirmation',
+                'message': 'Email konfirmasi pembayaran telah dikirim',
+                'timestamp': datetime.utcnow().isoformat(),
+                'read': False
+            }
+            user.notifications.append(notification)
+            
+            db.session.commit()
+            flash(f'Email konfirmasi berhasil dikirim ke {form.full_name}', 'success')
+            
+        except Exception as mail_error:
+            print(f"Detailed mail error: {str(mail_error)}")
+            # Try alternate email sending method
+            try:
+                success, message = send_email(
+                    user.email,
+                    'Konfirmasi Pembayaran - PPDB Online',
+                    html_content
+                )
+                if success:
+                    flash(f'Email konfirmasi berhasil dikirim ke {form.full_name}', 'success')
+                else:
+                    raise Exception(message)
+            except Exception as alt_error:
+                print(f"Alternative mail method failed: {str(alt_error)}")
+                raise Exception("Gagal mengirim email melalui kedua metode")
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error sending payment confirmation: {str(e)}")
+        flash(f'Gagal mengirim email konfirmasi: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_bp.payment_completed_emails'))
